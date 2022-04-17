@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.2.1
+// @version      1.3.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -15,17 +15,18 @@
 //
 // ==/UserScript==
 
-const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAMAUExURWlsaXV1cX17eyzRS1nA" +
-      "dF7QclzQdHyipHTFjXTLi7KKa7SLbLqQa7uTcbmTd7mae76xes+idM2kftmrd+GpYeCqcOG2fuazeOa3fOW7fem5f/TEeIiDhY2Li46MipCJh5WQkJ6Xl6igoK+1sYzKm5LXqavcsa/W077d" +
-      "wq3//7P//8uzntGniNCrgtGtidGujN21g9CxltO5mdi7m8O4uOe8jei7g97DqNTDu+/AiezAi+3Dj+zEj+XAle7DkO7FkO/Gk+/HlOjFmuzMnvHJh/LKjfHJk/HIlfPNkvXLm/XNnPfQiuDI" +
-      "ruXJqeXTqOrXruzZtvHPpvLTp/bRpPbUpPbUpfbUp/XUqPfWqvfXrPjVo/jXq/nXrPHVtffatvjbs/rcsvnctvret/jgvcLKws7VzNrNwtrT1Mfozczk0M3t1Nfhy8n//9ns8db/89D//9n/" +
-      "/9z//+He3P/kw/3mw/7mx//pxf7oyP/pyf7rzP/tz/fm0fDn3/7t1fvt3P/y3eHj7ufp7e3n5+jp9Oru/+zs+O3u/uLx5Of+/+n//+3////04//25v327P/55//47fDw8/b68fL///f5+fT4" +
-      "//b8//X///n39/v48/z48v/78/379/v9//n///34+P/7+/38+P39+/z8/P7+/P7+/v7+/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
-      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALvc" +
-      "lYYAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAZdEVYdFNvZnR3YXJlAFBhaW50Lk5FVCB2My41LjVJivzgAAAA70lEQVQoU2NYig5AIjlzIezCdtYMsMh0dmVGBnkmlSwNTmY2sMgiBVk5JUUZ" +
-      "DlWWTLWJnUARoBaQrskQnflAEa1JS5cC0YTmhobGCUAxhmmaOUs7lk5pm9o1tcWEP3UaUE3X0nlNRbnpKeragqKSRhDb+0UExMwcnT29oix1wCIFfdJ+QdnJxRVVZW7CYJFped5J8QExoSH+" +
-      "VuKGEF2zPCKig90d7O2sJdIgIktdbcIiw8KdhHi4W6EiLlIGurxcfHq2phZQER99Y9/Y8tKKxEBzqEhCXEllbX1Pd111DVSkd8bM2YuXzF+6cMGcpUsBclSDbJTlCDAAAAAASUVORK5CYII=";
+// sb.png minified with TinyPNG then converted to base 64
+const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
+      "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
+      "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
+      "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
+      "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
+      "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
+      "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+
+// add_portfolio_journal.png minified with TinyPNG then converted to base 64
+const appPfolioBtnImgData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAALBAMAAACEzBAKAAAAFVBMVEUAAAAAAAD/swD06DD6zhj///8PDgMsru0CAAAAAXRSTlMA" +
+      "QObYZgAAADhJREFUCNdjCBQEAwEGYWMwMERmmBkbCoIZhkAobMgg4igo6Cjo4sggpKQIhEqKyAwgQGEwQk0GAIl6DBhSGEjXAAAAAElFTkSuQmCC";
 
 // chart vars
 const UtcTimezone = "T00:00:00+00:00"
@@ -478,138 +479,135 @@ if (localStorage.markethuntEventDatesLastRetrieval === undefined) {
     updateEventData();
 }
 
-(function () {
-    /**
-     * [ Notes ]
-     * innerText has poor retrieval perf, use textContent
-     *   http://perfectionkills.com/the-poor-misunderstood-innerText/
-     * Is there a better way to center scrollRow vertically within table?
-     *   https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
-     */
+/**
+ * [ Notes ]
+ * innerText has poor retrieval perf, use textContent
+ *   http://perfectionkills.com/the-poor-misunderstood-innerText/
+ * Is there a better way to center scrollRow vertically within table?
+ *   https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
+ */
 
-    MutationObserver =
-        window.MutationObserver ||
-        window.WebKitMutationObserver ||
-        window.MozMutationObserver;
+MutationObserver =
+    window.MutationObserver ||
+    window.WebKitMutationObserver ||
+    window.MozMutationObserver;
 
-    // Only observe changes to the #overlayPopup element
-    const observerTarget = document.querySelector("#overlayPopup");
+// Only observe changes to the #overlayPopup element
+const mpObserverTarget = document.querySelector("#overlayPopup");
 
-    const observer = new MutationObserver(function () {
+const mpObserver = new MutationObserver(function () {
+    // Check if the Marketplace interface is open
+    if (!mpObserverTarget.querySelector(".marketplaceView")) {
+        return;
+    }
 
-        // Check if the Marketplace interface is open
-        if (observerTarget.querySelector(".marketplaceView")) {
-            // detect item page and inject chart
-            const backButton = observerTarget.querySelector("a.marketplaceView-breadcrumb");
-            if (backButton) {
-                const targetContainer = observerTarget.querySelector(
-                    ".marketplaceView-item-description"
-                );
+    // detect item page and inject chart
+    const backButton = mpObserverTarget.querySelector("a.marketplaceView-breadcrumb");
+    if (backButton) {
+        const targetContainer = mpObserverTarget.querySelector(".marketplaceView-item-description");
 
-                if (targetContainer && !observerTarget.querySelector("#chartArea")) {
-                    // Disconnect and reconnect later to prevent mutation loop
-                    observer.disconnect();
+        if (targetContainer && !mpObserverTarget.querySelector("#chartArea")) {
+            // Disconnect and reconnect later to prevent mutation loop
+            mpObserver.disconnect();
 
-                    // Setup chart divs
-                    const itemId = observerTarget.querySelector(".marketplaceView-item.view").getAttribute("data-item-id");
-                    targetContainer.insertAdjacentHTML(
-                        "beforebegin",
-                        `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
-                            <div id="highchartContainer" style="flex-grow: 1"></div>
-                            <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 25px 5px">
-                                <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
-                                    Trade volume:<br>
-                                    <span id="infoboxTradevol">--</span><br>
-                                    <span id="infoboxGoldvol" class="marketplaceView-goldValue">--</span>
-                                </div>
-                                <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans">
-                                    7-day trade volume:<br>
-                                    <span id="infobox7dTradevol">--</span><br>
-                                    <span id="infobox7dGoldvol" class="marketplaceView-goldValue">--</span>
-                                </div>
-                                <div style="flex-grow: 1"></div> <!-- spacer div -->
-                                <div>
-                                    <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
-                                    <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
-                                    <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a>
-                                </div>
-                            </div>
-                        </div>`);
+            // Setup chart divs
+            const itemId = mpObserverTarget.querySelector(".marketplaceView-item.view").getAttribute("data-item-id");
+            targetContainer.insertAdjacentHTML(
+                "beforebegin",
+                `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
+                    <div id="highchartContainer" style="flex-grow: 1"></div>
+                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 25px 5px">
+                        <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
+                            Trade volume:<br>
+                            <span id="infoboxTradevol">--</span><br>
+                            <span id="infoboxGoldvol" class="marketplaceView-goldValue">--</span>
+                        </div>
+                        <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans">
+                            7-day trade volume:<br>
+                            <span id="infobox7dTradevol">--</span><br>
+                            <span id="infobox7dGoldvol" class="marketplaceView-goldValue">--</span>
+                        </div>
+                        <div style="flex-grow: 1"></div> <!-- spacer div -->
+                        <div>
+                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
+                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
+                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a>
+                        </div>
+                    </div>
+                </div>`
+            );
 
-                    const itemPriceContainer = observerTarget.querySelector(".marketplaceView-item-averagePrice");
-                    itemPriceContainer.classList.add("infobox-stat");
-                    itemPriceContainer.insertAdjacentHTML(
-                        "beforeend",
-                        `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" />`
-                    );
+            const itemPriceContainer = mpObserverTarget.querySelector(".marketplaceView-item-averagePrice");
+            itemPriceContainer.classList.add("infobox-stat");
+            itemPriceContainer.insertAdjacentHTML(
+                "beforeend",
+                `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" />`
+            );
 
-                    const itemPriceDisplay = itemPriceContainer.querySelector("span");
-                    itemPriceDisplay.id = "infoboxPrice";
+            const itemPriceDisplay = itemPriceContainer.querySelector("span");
+            itemPriceDisplay.id = "infoboxPrice";
 
-                    const infoBox = document.getElementById("markethuntInfobox");
-                    infoBox.prepend(itemPriceContainer);
+            const infoBox = document.getElementById("markethuntInfobox");
+            infoBox.prepend(itemPriceContainer);
 
-                    // Set infobox minimum width to prevent layout shifts, *then* reset price display
-                    const infoBoxInitialWidth = $(infoBox).width();
-                    infoBox.style.minWidth = `${infoBoxInitialWidth}px`;
+            // Set infobox minimum width to prevent layout shifts, *then* reset price display
+            const infoBoxInitialWidth = $(infoBox).width();
+            infoBox.style.minWidth = `${infoBoxInitialWidth}px`;
 
-                    itemPriceDisplay.innerHTML = "--";
+            itemPriceDisplay.innerHTML = "--";
 
-                    // Render chart
-                    renderChartWithItemId(itemId, "highchartContainer");
+            // Render chart
+            renderChartWithItemId(itemId, "highchartContainer");
 
-                    // Re-observe after mutation-inducing logic
-                    observer.observe(observerTarget, {
-                        childList: true,
-                        subtree: true
-                    });
-                }
-            }
-
-            // detect history page and inject portfolio buttons
-            const historyTab = observerTarget.querySelector("[data-tab=history].active");
-            if (historyTab) {
-                observer.disconnect();
-
-                let rowElem = observerTarget.querySelectorAll(".marketplaceMyListings tr.buy");
-                rowElem.forEach(function(row) {
-                    if (!row.querySelector(".mousehuntActionButton.tiny.addPortfolio")) {
-                        let itemElem = row.querySelector(".marketplaceView-itemImage");
-                        const itemId = itemElem.getAttribute("data-item-id");
-
-                        let qtyElem = row.querySelector("td.marketplaceView-table-numeric");
-                        const qty = Number(qtyElem.innerText.replace(/\D/g, ''));
-
-                        let priceElem = row.querySelector("td.marketplaceView-table-numeric .marketplaceView-goldValue");
-                        const price = Number(priceElem.innerText.replace(/\D/g, ''));
-
-                        let buttonContainer = row.querySelector("td.marketplaceView-table-actions");
-                        let addPortfolioBtn = document.createElement("a");
-                        addPortfolioBtn.href = `https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}&add_qty=${qty}&add_mark=${price}`;
-                        addPortfolioBtn.innerHTML = "<span>+ Portfolio</span>";
-                        addPortfolioBtn.className = "mousehuntActionButton tiny addPortfolio";
-                        addPortfolioBtn.target = "_blank";
-                        addPortfolioBtn.style.display = "block";
-                        addPortfolioBtn.style.marginTop = "2px";
-                        buttonContainer.appendChild(addPortfolioBtn);
-                    }
-                });
-
-                observer.observe(observerTarget, {
-                    childList: true,
-                    subtree: true
-                });
-            }
+            // Re-observe after mutation-inducing logic
+            mpObserver.observe(mpObserverTarget, {
+                childList: true,
+                subtree: true
+            });
         }
-    });
+    }
 
-    // Initial observe
-    observer.observe(observerTarget, {
-        childList: true,
-        subtree: true
-    });
+    // detect history page and inject portfolio buttons
+    const historyTab = mpObserverTarget.querySelector("[data-tab=history].active");
+    if (historyTab) {
+        mpObserver.disconnect();
 
-})();
+        let rowElem = mpObserverTarget.querySelectorAll(".marketplaceMyListings tr.buy");
+        rowElem.forEach(function(row) {
+            if (!row.querySelector(".mousehuntActionButton.tiny.addPortfolio")) {
+                let itemElem = row.querySelector(".marketplaceView-itemImage");
+                const itemId = itemElem.getAttribute("data-item-id");
+
+                let qtyElem = row.querySelector("td.marketplaceView-table-numeric");
+                const qty = Number(qtyElem.innerText.replace(/\D/g, ''));
+
+                let priceElem = row.querySelector("td.marketplaceView-table-numeric .marketplaceView-goldValue");
+                const price = Number(priceElem.innerText.replace(/\D/g, ''));
+
+                let buttonContainer = row.querySelector("td.marketplaceView-table-actions");
+                let addPortfolioBtn = document.createElement("a");
+                addPortfolioBtn.href = `https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}&add_qty=${qty}&add_mark=${price}`;
+                addPortfolioBtn.innerHTML = "<span>+ Portfolio</span>";
+                addPortfolioBtn.className = "mousehuntActionButton tiny addPortfolio lightBlue";
+                addPortfolioBtn.target = "_blank";
+                addPortfolioBtn.style.display = "block";
+                addPortfolioBtn.style.marginTop = "2px";
+                buttonContainer.appendChild(addPortfolioBtn);
+            }
+        });
+
+        mpObserver.observe(mpObserverTarget, {
+            childList: true,
+            subtree: true
+        });
+    }
+});
+
+// Initial observe
+mpObserver.observe(mpObserverTarget, {
+    childList: true,
+    subtree: true
+});
 
 const mp_css_overrides = `
 .marketplaceView-item {
