@@ -6,8 +6,10 @@
 // @version      1.3.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
+// @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/highcharts/9.3.2/highstock.min.js
 // @include      https://www.mousehuntgame.com/*
 // @grant        GM_addStyle
@@ -15,18 +17,20 @@
 //
 // ==/UserScript==
 
-// sb.png minified with TinyPNG then converted to base 64
-const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
-      "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
-      "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
-      "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
-      "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
-      "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
-      "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+MutationObserver =
+    window.MutationObserver ||
+    window.WebKitMutationObserver ||
+    window.MozMutationObserver;
 
-// add_portfolio_journal.png minified with TinyPNG then converted to base 64
-const appPfolioBtnImgData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAALBAMAAACEzBAKAAAAFVBMVEUAAAAAAAD/swD06DD6zhj///8PDgMsru0CAAAAAXRSTlMA" +
-      "QObYZgAAADhJREFUCNdjCBQEAwEGYWMwMERmmBkbCoIZhkAobMgg4igo6Cjo4sggpKQIhEqKyAwgQGEwQk0GAIl6DBhSGEjXAAAAAElFTkSuQmCC";
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/*******************************
+ * 
+ *  Chart functions  
+ * 
+ *******************************/
 
 // chart vars
 const UtcTimezone = "T00:00:00+00:00"
@@ -83,7 +87,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
 }
 
 function updateEventData() {
-    $.getJSON("https://markethunt.vsong.ca/api/get_event_dates.php", function (response) {
+    $.getJSON(`https://markethunt.vsong.ca/api/get_event_dates.php?plugin_ver=${GM_info.script.version}`, function (response) {
         localStorage.markethuntEventDates = JSON.stringify(response);
         localStorage.markethuntEventDatesLastRetrieval = Date.now();
     });
@@ -470,7 +474,7 @@ function renderChartWithItemId(itemId, containerId) {
         });
     }
 
-    $.getJSON("https://markethunt.vsong.ca/api/stock_data/getjson.php?item_id=" + itemId, function (response) {
+    $.getJSON(`https://markethunt.vsong.ca/api/stock_data/getjson.php?item_id=${itemId}&plugin_ver=${GM_info.script.version}`, function (response) {
         renderChart(response);
     });
 }
@@ -479,22 +483,22 @@ if (localStorage.markethuntEventDatesLastRetrieval === undefined) {
     updateEventData();
 }
 
-/**
- * [ Notes ]
- * innerText has poor retrieval perf, use textContent
- *   http://perfectionkills.com/the-poor-misunderstood-innerText/
- * Is there a better way to center scrollRow vertically within table?
- *   https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
- */
+/*******************************
+ * 
+ *  Marketplace view observer  
+ * 
+ *******************************/
 
-MutationObserver =
-    window.MutationObserver ||
-    window.WebKitMutationObserver ||
-    window.MozMutationObserver;
+// sb.png minified with TinyPNG then converted to base 64
+const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
+      "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
+      "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
+      "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
+      "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
+      "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
+      "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
 
-// Only observe changes to the #overlayPopup element
 const mpObserverTarget = document.querySelector("#overlayPopup");
-
 const mpObserver = new MutationObserver(function () {
     // Check if the Marketplace interface is open
     if (!mpObserverTarget.querySelector(".marketplaceView")) {
@@ -652,11 +656,200 @@ const mp_css_overrides = `
 }
 `;
 
-$(document).ready(function() {
-    GM_addStyle(GM_getResourceText("jq_confirm_css"));
-    GM_addStyle(mp_css_overrides);
-    addTouchPoint();
+/*******************************
+ * 
+ *  Journal observer  
+ * 
+ *******************************/
+
+// add_portfolio_journal.png minified with TinyPNG then converted to base 64
+const addPfolioBtnImgData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAALBAMAAACEzBAKAAAAFVBMVEUAAAAAAAD/swD06DD6zhj///8PDgMsru0CAAAAAXRSTlMA" +
+      "QObYZgAAADhJREFUCNdjCBQEAwEGYWMwMERmmBkbCoIZhkAobMgg4igo6Cjo4sggpKQIhEqKyAwgQGEwQk0GAIl6DBhSGEjXAAAAAElFTkSuQmCC";
+
+function addJournalButtons(supplyTransferJournalEntries) {
+    supplyTransferJournalEntries.forEach(function(supplyTransferEntry) {
+        const journalActionsElem = supplyTransferEntry.querySelector(".journalactions");
+        const textElem = supplyTransferEntry.querySelector(".journaltext");
+
+        if (journalActionsElem.querySelector("a.actionportfolio")) {
+            return;
+        }
+        if (textElem.textContent.includes("SUPER|brie+") || textElem.textContent.includes("Passing Parcel")) {
+            return;
+        }
+        // Disable button on sending transfers until portfolio sending feature implemented
+        if (textElem.textContent.includes("I sent")) {
+            return;
+        }
+
+        const addPortfolioBtn = document.createElement("a");
+        addPortfolioBtn.href = "#";
+        addPortfolioBtn.className = "actionportfolio";
+        addPortfolioBtn.addEventListener('click', addSbTradeToPortfolio);
+        journalActionsElem.prepend(addPortfolioBtn)
+    });
+}
+
+async function updateItemMetadata() {
+    console.log("Retrieveing marketplace item data");
+    return new Promise((resolve, reject) => {
+        hg.utils.Marketplace.getMarketplaceData(
+            function (response) {
+                const itemMetadata = response.marketplace_items.reduce(
+                    function (items, item) {
+                        items[normalizeItemName(item.name)] = item.item_id;
+                        return items;
+                    },
+                    {}
+                );
+                localStorage.markethuntItemMetadata = JSON.stringify(itemMetadata);
+                localStorage.markethuntItemMetadataLastRetrieval = Date.now();
+                resolve(itemMetadata);
+            },
+            function (e) {
+                reject(e);
+            }
+        );
+    });
+}
+
+function normalizeItemName(name) {
+    return name.trim();
+}
+
+async function addSbTradeToPortfolio(event) {
+    event.preventDefault(); // prevent scroll to top
+
+    const targetTransferJournalEntry = event.target.parentNode.parentNode.parentNode;
+    const textElem = targetTransferJournalEntry.querySelector(".journaltext");
+    const targetEntryId = Number(targetTransferJournalEntry.dataset.entryId);
+    // group 1 = qty, group 2 = item name, group 3 = trade partner snuid
+    const regex = /^I received (\d[\d,]*) (.+?) from <a href.+snuid=(\d+)/
+
+    // get item and partner data
+    const targetEntryMatch = textElem.innerHTML.match(regex);
+    const targetItemQty = Number(targetEntryMatch[1].replace(",", ""));
+    const targetItemName = targetEntryMatch[2];
+    const partnerSnuid = targetEntryMatch[3];
+    const partnerName = textElem.querySelector('a').innerHTML;
+
+    // get item ID
+    let targetItemId = undefined;
+    if (localStorage.markethuntItemMetadata !== undefined) {
+        const itemMetadata = JSON.parse(localStorage.markethuntItemMetadata);
+        targetItemId = itemMetadata[normalizeItemName(targetItemName)];
+    }
+
+    if (targetItemId === undefined) {
+        $.toast({
+            text: "Please wait ...",
+            heading: localStorage.markethuntItemMetadata === undefined ? 'Downloading item data' : 'Reloading item data',
+            icon: 'info',
+            position: 'top-left',
+            loader: false,  // Whether to show loader or not. True by default
+        });
+        const itemMetadata = await updateItemMetadata();
+        await sleep(600); // allow user to read toast before opening new tab
+        targetItemId = itemMetadata[normalizeItemName(targetItemName)];
+    }
+
+    // detect all sb send entries
+    const allSupplyTransferJournalEntries = document.querySelectorAll("#journalContainer div.entry.supplytransferitem");
+    const matchingSbSendEntries = Array.from(allSupplyTransferJournalEntries).reduce(
+        function(results, journalEntry) {
+            const innerHTML = journalEntry.querySelector(".journaltext").innerHTML;
+            if (!innerHTML.includes(partnerSnuid)) {
+                return results;
+            }
+            const candidateSbMatch = innerHTML.match(/^I sent (\d[\d,]*) SUPER\|brie\+ to <a href/);
+            if (!candidateSbMatch) {
+                return results;
+            }
+            const candidateSbSent = Number(candidateSbMatch[1].replace(",", ""));
+            const candidateEntryId = Number(journalEntry.dataset.entryId);
+            results.push({sbSent: candidateSbSent, entryId: candidateEntryId});
+            return results;
+        },
+        []
+    );
+
+    // choose best sb send entry
+    let bestSbSendEntryMatch = null;
+    let bestMatchDistance = null;
+    matchingSbSendEntries.forEach(function(candidateEntry) {
+        const entryPairDistance = Math.abs(targetEntryId - candidateEntry.entryId);
+        if (bestMatchDistance === null || bestMatchDistance > entryPairDistance) {
+            bestSbSendEntryMatch = candidateEntry;
+            bestMatchDistance = entryPairDistance;
+        }
+    });
+
+    let avgSbPriceString = "none";
+    if (bestSbSendEntryMatch !== null) {
+        const avgSbPrice = bestSbSendEntryMatch.sbSent / targetItemQty;
+        avgSbPriceString = avgSbPrice.toFixed(2);
+    }
+
+    // prepare modal message
+    let actionMsg = 'Markethunt plugin: ';
+    if (bestSbSendEntryMatch !== null) {
+        actionMsg += `Found a transfer of ${bestSbSendEntryMatch.sbSent.toLocaleString()} SB to ${partnerName}.` + 
+            ` Buy price has been filled in for you.`;
+    } else {
+        actionMsg += 'No matching SB transfer found. Please fill in buy price manually.';
+    }
+
+    // open in new tab
+    window.open(`https://markethunt.vsong.ca/portfolio.php?action=add_position` + 
+        `&action_msg=${encodeURIComponent(actionMsg)}` +
+        `&item_id=${targetItemId}` + 
+        `&add_qty=${targetItemQty}` + 
+        `&add_mark=${avgSbPriceString}` +
+        `&add_mark_type=sb`,
+        '_blank');
+}
+
+const journalObserverTarget = document.querySelector("#mousehuntContainer");
+const journalObserver = new MutationObserver(function () {
+    // Disconnect and reconnect later to prevent mutation loop
+    journalObserver.disconnect();
+
+    const journalContainer = journalObserverTarget.querySelector("#journalContainer");
+    if (journalContainer) {
+        // add portfolio buttons
+        const supplyTransferJournalEntries = journalContainer.querySelectorAll("div.entry.supplytransferitem");
+        addJournalButtons(supplyTransferJournalEntries);
+    }
+
+    // Reconnect observer once all mutations done
+    journalObserver.observe(journalObserverTarget, {
+        childList: true,
+        subtree: true
+    });
 });
+
+// Initial observe
+journalObserver.observe(journalObserverTarget, {
+    childList: true,
+    subtree: true
+});
+
+const journal_css_overrides = `
+.journalactions a {
+    display: inline-block;
+}
+.journalactions a.actionportfolio {
+    margin-right: 5px;
+    background: url('${addPfolioBtnImgData}');
+    width: 16px;
+}
+`;
+
+/*******************************
+ * 
+ *  Import Portfolio  
+ * 
+ *******************************/
 
 function addTouchPoint() {
     if ($('.invImport').length == 0) {
@@ -718,3 +911,21 @@ function onInvImportClick(){
         }
     })
 }
+
+/*******************************
+ * 
+ *  Final setup and add css  
+ * 
+ *******************************/
+
+$(document).ready(function() {
+    GM_addStyle(GM_getResourceText("jq_confirm_css"));
+    GM_addStyle(GM_getResourceText("jq_toast_css"));
+    GM_addStyle(mp_css_overrides);
+    GM_addStyle(journal_css_overrides);
+
+    addTouchPoint();
+
+    const supplyTransferJournalEntries = document.querySelectorAll("#journalContainer div.entry.supplytransferitem");
+    addJournalButtons(supplyTransferJournalEntries);
+});
