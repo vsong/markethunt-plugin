@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.1
+// @version      1.3.2
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -33,11 +33,10 @@ function sleep(ms) {
  *******************************/
 
 class SettingsController {
-    // private static feature too new :(
-    // static #settings;
+    // TODO: make settings private and convert init into static initializer once greasyfork adds support
     static settings;
 
-    static {
+    static init() {
         let settingsObj = {};
 
         if (localStorage.markethuntSettings !== undefined) {
@@ -90,24 +89,43 @@ class SettingsController {
     }
 }
 
+SettingsController.init();
+
 function openPluginSettings() {
     $.alert({
         title: 'Markethunt Plugin Settings',
         content: `
-            <label for="checkbox-use-latest-sb-price">
-                <input id="checkbox-use-latest-sb-price" type="checkbox">
-                Use the most recent SB price to calculate the SB Index of an item even if it has not been recently traded
-            </label><br>
-            <label for="checkbox-start-chart-at-zero">
-                <input id="checkbox-start-chart-at-zero" type="checkbox">
-                Make the stock chart Y-axis start at 0 gold/SB
-            </label><br>
-            <label for="checkbox-enable-portfolio-buttons">
-                <input id="checkbox-enable-portfolio-buttons" type="checkbox">
-                Place "Add to portfolio" buttons in your marketplace history and journal log
-            </label>
+            <div id="markethunt-settings-container">
+                <label for="checkbox-use-latest-sb-price" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-use-latest-sb-price" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Use most recent SB Index</b><br>
+                        Use the most recent SB price to calculate the SB Index of an item even if it has not been recently traded
+                    </div>
+                </label>
+                <label for="checkbox-start-chart-at-zero" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-start-chart-at-zero" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Y-axis starts at 0</b><br>
+                        Make the stock chart Y-axis start at 0 gold/SB
+                    </div>
+                </label>
+                <label for="checkbox-enable-portfolio-buttons" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-enable-portfolio-buttons" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Enable Portfolio quick-add buttons</b><br>
+                        Place "Add to portfolio" buttons in your marketplace history and journal log
+                    </div>
+                </label>
+            </div>
         `,
-        boxWidth: '600px',
+        boxWidth: '450px',
         useBootstrap: false,
         closeIcon: true,
         draggable: true,
@@ -756,6 +774,17 @@ const mp_css_overrides = `
     color: #6a6a6a;
     font-size: 10px;
     margin-top: 3px;
+}
+.markethunt-settings-row-input {
+    display: flex;
+    align-items: center;
+    padding-right: 5px;
+}
+.markethunt-settings-row {
+    display: flex;
+    padding: 5px;
+}
+.markethunt-settings-row-description {
 }
 .marketplaceView-item-averagePrice.infobox-stat {
     text-align: left;
