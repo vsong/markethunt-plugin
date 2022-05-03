@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.0
+// @version      1.3.1
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -24,6 +24,113 @@ MutationObserver =
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/*******************************
+ * 
+ *  Plugin settings  
+ * 
+ *******************************/
+
+class SettingsController {
+    // private static feature too new :(
+    // static #settings;
+    static settings;
+
+    static {
+        let settingsObj = {};
+
+        if (localStorage.markethuntSettings !== undefined) {
+            settingsObj = JSON.parse(localStorage.markethuntSettings);
+        }
+
+        this.settings = new Proxy(settingsObj, {
+            set(obj, prop, value) {
+                obj[prop] = value;
+                localStorage.markethuntSettings = JSON.stringify(obj);
+                return true;
+            }
+        });
+    }
+
+    static getUseLatestSbPriceForIndex() {
+        if (this.settings.useLatestSbPriceForIndex === undefined) {
+            return false;
+        } else {
+            return this.settings.useLatestSbPriceForIndex;
+        }
+    }
+
+    static setUseLatestSbPriceForIndex(value) {
+        this.settings.useLatestSbPriceForIndex = value;
+    }
+
+    static getStartChartAtZero() {
+        if (this.settings.startChartAtZero === undefined) {
+            return false;
+        } else {
+            return this.settings.startChartAtZero;
+        }
+    }
+
+    static setStartChartAtZero(value) {
+        this.settings.startChartAtZero = value;
+    }
+
+    static getEnablePortfolioButtons() {
+        if (this.settings.enablePortfolioButtons === undefined) {
+            return true;
+        } else {
+            return this.settings.enablePortfolioButtons;
+        }
+    }
+
+    static setEnablePortfolioButtons(value) {
+        this.settings.enablePortfolioButtons = value;
+    }
+}
+
+function openPluginSettings() {
+    $.alert({
+        title: 'Markethunt Plugin Settings',
+        content: `
+            <label for="checkbox-use-latest-sb-price">
+                <input id="checkbox-use-latest-sb-price" type="checkbox">
+                Use the most recent SB price to calculate the SB Index of an item even if it has not been recently traded
+            </label><br>
+            <label for="checkbox-start-chart-at-zero">
+                <input id="checkbox-start-chart-at-zero" type="checkbox">
+                Make the stock chart Y-axis start at 0 gold/SB
+            </label><br>
+            <label for="checkbox-enable-portfolio-buttons">
+                <input id="checkbox-enable-portfolio-buttons" type="checkbox">
+                Place "Add to portfolio" buttons in your marketplace history and journal log
+            </label>
+        `,
+        boxWidth: '600px',
+        useBootstrap: false,
+        closeIcon: true,
+        draggable: true,
+        onOpen: function(){
+            const useLatestSbPriceCheckbox = document.getElementById("checkbox-use-latest-sb-price");
+            useLatestSbPriceCheckbox.checked = SettingsController.getUseLatestSbPriceForIndex();
+            useLatestSbPriceCheckbox.addEventListener('change', function(event) {
+                SettingsController.setUseLatestSbPriceForIndex(event.currentTarget.checked);
+            });
+
+            const startChartAtZeroCheckbox = document.getElementById("checkbox-start-chart-at-zero");
+            startChartAtZeroCheckbox.checked = SettingsController.getStartChartAtZero();
+            startChartAtZeroCheckbox.addEventListener('change', function(event) {
+                SettingsController.setStartChartAtZero(event.currentTarget.checked);
+            });
+
+            const enablePortfolioButtonsCheckbox = document.getElementById("checkbox-enable-portfolio-buttons");
+            enablePortfolioButtonsCheckbox.checked = SettingsController.getEnablePortfolioButtons();
+            enablePortfolioButtonsCheckbox.addEventListener('change', function(event) {
+                SettingsController.setEnablePortfolioButtons(event.currentTarget.checked);
+            });
+        }
+    });
 }
 
 /*******************************
@@ -126,12 +233,16 @@ function renderChartWithItemId(itemId, containerId) {
             // set sb price
             try {
                 let sbiText = '--';
-                if (newestPrice.sb_index >= 100) {
-                    sbiText = Math.round(newestPrice.sb_index).toLocaleString();
-                /*} else if (newestPrice.sb_index >= 10) {
-                    sbiText = newestPrice.sb_index.toFixed(1).toLocaleString();*/
+                let sbIndex = newestPrice.sb_index;
+                
+                if (SettingsController.getUseLatestSbPriceForIndex()) {
+                    sbIndex = newestPrice.price / response.latest_sb_data.price;
+                }
+                
+                if (sbIndex >= 100) {
+                    sbiText = Math.round(sbIndex).toLocaleString();
                 } else {
-                    sbiText = newestPrice.sb_index.toFixed(2).toLocaleString();
+                    sbiText = sbIndex.toFixed(2).toLocaleString();
                 }
                 sbIndexDisplay.innerHTML = sbiText;
             } catch (e) {
@@ -411,8 +522,7 @@ function renderChartWithItemId(itemId, containerId) {
             ],
             yAxis: [
                 {
-                    //height: '80%',
-                    // lineWidth: 1,
+                    min: SettingsController.getStartChartAtZero() ? 0 : null,
                     labels: {
                         formatter: function() {
                             return this.value.toLocaleString() + 'g';
@@ -427,7 +537,7 @@ function renderChartWithItemId(itemId, containerId) {
                     opposite: false,
                     alignTicks: false, // disabled, otherwise autoranger will create too large a Y-window
                 }, {
-                    //height: '80%',
+                    min: SettingsController.getStartChartAtZero() ? 0 : null,
                     gridLineWidth: 0,
                     labels: {
                         formatter: function() {
@@ -520,7 +630,7 @@ const mpObserver = new MutationObserver(function () {
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
                     <div id="highchartContainer" style="flex-grow: 1"></div>
-                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 25px 5px">
+                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px">
                         <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
                             Trade volume:<br>
                             <span id="infoboxTradevol">--</span><br>
@@ -535,7 +645,8 @@ const mpObserver = new MutationObserver(function () {
                         <div>
                             <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
                             <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
-                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a>
+                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a><br>
+                            <a class="markethunt-settings-link" id="markethuntSettingsLink" href="#" >[Plugin Settings]</a>
                         </div>
                     </div>
                 </div>`
@@ -560,6 +671,10 @@ const mpObserver = new MutationObserver(function () {
 
             itemPriceDisplay.innerHTML = "--";
 
+            // Set Plugin Settings listener
+            const settingsLink = document.getElementById("markethuntSettingsLink");
+            settingsLink.addEventListener('click', openPluginSettings);
+
             // Render chart
             renderChartWithItemId(itemId, "highchartContainer");
 
@@ -573,7 +688,7 @@ const mpObserver = new MutationObserver(function () {
 
     // detect history page and inject portfolio buttons
     const historyTab = mpObserverTarget.querySelector("[data-tab=history].active");
-    if (historyTab) {
+    if (SettingsController.getEnablePortfolioButtons() && historyTab) {
         mpObserver.disconnect();
 
         let rowElem = mpObserverTarget.querySelectorAll(".marketplaceMyListings tr.buy");
@@ -636,6 +751,11 @@ const mp_css_overrides = `
 .markethunt-cross-link {
     color: #0000dd;
     font-size: 10px;
+}
+.markethunt-settings-link {
+    color: #6a6a6a;
+    font-size: 10px;
+    margin-top: 3px;
 }
 .marketplaceView-item-averagePrice.infobox-stat {
     text-align: left;
@@ -815,7 +935,7 @@ const journalObserver = new MutationObserver(function () {
     journalObserver.disconnect();
 
     const journalContainer = journalObserverTarget.querySelector("#journalContainer");
-    if (journalContainer) {
+    if (SettingsController.getEnablePortfolioButtons() && journalContainer) {
         // add portfolio buttons
         const supplyTransferJournalEntries = journalContainer.querySelectorAll("div.entry.supplytransferitem");
         addJournalButtons(supplyTransferJournalEntries);
@@ -909,7 +1029,7 @@ function onInvImportClick(){
                 submitInv();
             });
         }
-    })
+    });
 }
 
 /*******************************
