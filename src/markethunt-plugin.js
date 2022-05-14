@@ -840,7 +840,7 @@ function addJournalButtons(supplyTransferJournalEntries) {
 }
 
 async function updateItemMetadata() {
-    console.log("Retrieveing marketplace item data");
+    console.log("Retrieving marketplace item data");
     return new Promise((resolve, reject) => {
         hg.utils.Marketplace.getMarketplaceData(
             function (response) {
