@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.3
+// @version      1.3.4
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -840,7 +840,7 @@ function addJournalButtons(supplyTransferJournalEntries) {
 }
 
 async function updateItemMetadata() {
-    console.log("Retrieveing marketplace item data");
+    console.log("Retrieving marketplace item data");
     return new Promise((resolve, reject) => {
         hg.utils.Marketplace.getMarketplaceData(
             function (response) {
