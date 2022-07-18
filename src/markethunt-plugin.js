@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.4
+// @version      1.3.5
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -1026,14 +1026,24 @@ function submitInv() {
         return;
     }
 
+    const gold = Number($('.hud_gold.hudstatvalue').text().replaceAll(/[^\d]/g, ''));
+
+    if (gold === NaN) {
+        return;
+    }
+
     const itemsToGet = ['weapon','base', 'trinket', 'bait', 'skin', 'crafting_item','convertible', 'potion', 'stat','collectible','map_piece','adventure']; //future proof this to allow for exclusions
-    let itemsArray = [];
-    hg.utils.UserInventory.getItemsByClass(itemsToGet,true,function(data) {
+    
+    hg.utils.UserInventory.getItemsByClass(itemsToGet, true, function(data) {
+        let importData = {
+            itemsArray: [],
+            inventoryGold: gold
+        };
         data.forEach(function(arrayItem, index) {
-            itemsArray[index] = [arrayItem.item_id, arrayItem.quantity];
+            importData.itemsArray[index] = [arrayItem.item_id, arrayItem.quantity];
         });
 
-        $('#import-data').val(JSON.stringify(itemsArray));
+        $('#import-data').val(JSON.stringify(importData));
         document.forms["import-form"].submit();
     })
 }
