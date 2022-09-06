@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.5
+// @version      1.3.6
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -16,6 +16,8 @@
 // @grant        GM_getResourceText
 //
 // ==/UserScript==
+
+var markethuntDomain = 'markethunt.vsong.ca';
 
 MutationObserver =
     window.MutationObserver ||
@@ -212,7 +214,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
 }
 
 function updateEventData() {
-    $.getJSON(`https://markethunt.vsong.ca/api/get_event_dates.php?plugin_ver=${GM_info.script.version}`, function (response) {
+    $.getJSON(`https://${markethuntDomain}/api/get_event_dates.php?plugin_ver=${GM_info.script.version}`, function (response) {
         localStorage.markethuntEventDates = JSON.stringify(response);
         localStorage.markethuntEventDatesLastRetrieval = Date.now();
     });
@@ -602,7 +604,7 @@ function renderChartWithItemId(itemId, containerId) {
         });
     }
 
-    $.getJSON(`https://markethunt.vsong.ca/api/stock_data/getjson.php?item_id=${itemId}&plugin_ver=${GM_info.script.version}`, function (response) {
+    $.getJSON(`https://${markethuntDomain}/api/stock_data/getjson.php?item_id=${itemId}&plugin_ver=${GM_info.script.version}`, function (response) {
         renderChart(response);
     });
 }
@@ -661,9 +663,9 @@ const mpObserver = new MutationObserver(function () {
                         </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
-                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
-                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
-                            <a class="markethunt-cross-link" href="https://markethunt.vsong.ca/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a><br>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a><br>
                             <a class="markethunt-settings-link" id="markethuntSettingsLink" href="#" >[Plugin Settings]</a>
                         </div>
                     </div>
@@ -723,7 +725,7 @@ const mpObserver = new MutationObserver(function () {
 
                 let buttonContainer = row.querySelector("td.marketplaceView-table-actions");
                 let addPortfolioBtn = document.createElement("a");
-                addPortfolioBtn.href = `https://markethunt.vsong.ca/portfolio.php?action=add_position&item_id=${itemId}&add_qty=${qty}&add_mark=${price}`;
+                addPortfolioBtn.href = `https://${markethuntDomain}/portfolio.php?action=add_position&item_id=${itemId}&add_qty=${qty}&add_mark=${price}`;
                 addPortfolioBtn.innerHTML = "<span>+ Portfolio</span>";
                 addPortfolioBtn.className = "mousehuntActionButton tiny addPortfolio lightBlue";
                 addPortfolioBtn.target = "_blank";
@@ -949,7 +951,7 @@ async function addSbTradeToPortfolio(event) {
     }
 
     // open in new tab
-    window.open(`https://markethunt.vsong.ca/portfolio.php?action=add_position` + 
+    window.open(`https://${markethuntDomain}/portfolio.php?action=add_position` + 
         `&action_msg=${encodeURIComponent(actionMsg)}` +
         `&item_id=${targetItemId}` + 
         `&add_qty=${targetItemQty}` + 
@@ -1026,7 +1028,7 @@ function submitInv() {
         return;
     }
 
-    const gold = Number($('.hud_gold.hudstatvalue').text().replaceAll(/[^\d]/g, ''));
+    const gold = Number($('.hud_gold').text().replaceAll(/[^\d]/g, ''));
 
     if (gold === NaN) {
         return;
@@ -1052,7 +1054,7 @@ function onInvImportClick(){
     $.dialog({
         title: 'Export inventory to Markethunt',
         content: `
-        <form id="import-form" name="import-form" action="https://markethunt.vsong.ca/import_portfolio.php" method="post" target="_blank">
+        <form id="import-form" name="import-form" action="https://${markethuntDomain}/import_portfolio.php" method="post" target="_blank">
                 <label for="import-portfolio-name">Portfolio name: <span style="color: red">*</span></label>
                 <input type="text" id="import-portfolio-name" name="import-portfolio-name" required pattern=".+"/>
                 <input type="hidden" id="import-data" name="import-data"/>
