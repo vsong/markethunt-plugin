@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.6
+// @version      1.3.7
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -175,7 +175,7 @@ const yGridLineColorLighter = "#dddddd";
 const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
-const chartFont = "tahoma";
+const chartFont = "tahoma,arial,sans-serif";
 
 var eventData = [];
 
@@ -875,7 +875,7 @@ async function addSbTradeToPortfolio(event) {
     const textElem = targetTransferJournalEntry.querySelector(".journaltext");
     const targetEntryId = Number(targetTransferJournalEntry.dataset.entryId);
     // group 1 = qty, group 2 = item name, group 3 = trade partner snuid
-    const regex = /^I received (\d[\d,]*) (.+?) from <a href.+snuid=(\d+)/
+    const regex = /^I received (\d[\d,]*) (.+?) from <a href.+snuid=(\w+)/
 
     // get item and partner data
     const targetEntryMatch = textElem.innerHTML.match(regex);
