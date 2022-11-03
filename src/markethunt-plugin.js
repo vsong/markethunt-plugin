@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.3.7
+// @version      1.4.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -18,6 +18,7 @@
 // ==/UserScript==
 
 var markethuntDomain = 'markethunt.vsong.ca';
+var markethuntApiDomain = 'api.markethunt.win';
 
 MutationObserver =
     window.MutationObserver ||
@@ -54,18 +55,6 @@ class SettingsController {
         });
     }
 
-    static getUseLatestSbPriceForIndex() {
-        if (this.settings.useLatestSbPriceForIndex === undefined) {
-            return false;
-        } else {
-            return this.settings.useLatestSbPriceForIndex;
-        }
-    }
-
-    static setUseLatestSbPriceForIndex(value) {
-        this.settings.useLatestSbPriceForIndex = value;
-    }
-
     static getStartChartAtZero() {
         if (this.settings.startChartAtZero === undefined) {
             return false;
@@ -98,15 +87,6 @@ function openPluginSettings() {
         title: 'Markethunt Plugin Settings',
         content: `
             <div id="markethunt-settings-container">
-                <label for="checkbox-use-latest-sb-price" class="markethunt-settings-row">
-                    <div class="markethunt-settings-row-input">
-                        <input id="checkbox-use-latest-sb-price" type="checkbox">
-                    </div>
-                    <div class="markethunt-settings-row-description">
-                        <b>Use most recent SB Index</b><br>
-                        Use the most recent SB price to calculate the SB Index of an item even if it has not been recently traded
-                    </div>
-                </label>
                 <label for="checkbox-start-chart-at-zero" class="markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
                         <input id="checkbox-start-chart-at-zero" type="checkbox">
@@ -132,12 +112,6 @@ function openPluginSettings() {
         closeIcon: true,
         draggable: true,
         onOpen: function(){
-            const useLatestSbPriceCheckbox = document.getElementById("checkbox-use-latest-sb-price");
-            useLatestSbPriceCheckbox.checked = SettingsController.getUseLatestSbPriceForIndex();
-            useLatestSbPriceCheckbox.addEventListener('change', function(event) {
-                SettingsController.setUseLatestSbPriceForIndex(event.currentTarget.checked);
-            });
-
             const startChartAtZeroCheckbox = document.getElementById("checkbox-start-chart-at-zero");
             startChartAtZeroCheckbox.checked = SettingsController.getStartChartAtZero();
             startChartAtZeroCheckbox.addEventListener('change', function(event) {
@@ -214,20 +188,20 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
 }
 
 function updateEventData() {
-    $.getJSON(`https://${markethuntDomain}/api/get_event_dates.php?plugin_ver=${GM_info.script.version}`, function (response) {
-        localStorage.markethuntEventDates = JSON.stringify(response);
-        localStorage.markethuntEventDatesLastRetrieval = Date.now();
+    $.getJSON(`https://${markethuntApiDomain}/events?plugin_ver=${GM_info.script.version}`, function (response) {
+        localStorage.markethuntEventDatesV2 = JSON.stringify(response);
+        localStorage.markethuntEventDatesV2LastRetrieval = Date.now();
     });
 }
 
 function renderChartWithItemId(itemId, containerId) {
     itemId = Number(itemId);
 
-    if (localStorage.markethuntEventDatesLastRetrieval !== undefined) {
+    if (localStorage.markethuntEventDatesV2LastRetrieval !== undefined) {
         eventData = [];
-        JSON.parse(localStorage.markethuntEventDates).forEach(event => eventData.push(eventBand(event[0], event[1], event[2])));
+        JSON.parse(localStorage.markethuntEventDatesV2).forEach(event => eventData.push(eventBand(event.start_date, event.end_date, event.short_name)));
 
-        if (Date.now() - Number(localStorage.markethuntEventDatesLastRetrieval) > 2 * 86400 * 1000) {
+        if (Date.now() - Number(localStorage.markethuntEventDatesV2LastRetrieval) > 2 * 86400 * 1000) {
             updateEventData();
         }
     } else {
@@ -236,12 +210,12 @@ function renderChartWithItemId(itemId, containerId) {
 
     function renderChart(response) {
         // set stock data HUD
-        if (response.data.length > 0) {
-            const newestPrice = response.data[response.data.length - 1];
+        if (response.market_data.length > 0) {
+            const newestPrice = response.market_data[response.market_data.length - 1];
             const utcTodayMillis = UtcIsoDateToMillis(new Date().toISOString().substring(0, 10));
 
             const priceDisplay = document.getElementById("infoboxPrice");
-            const sbIndexDisplay = document.getElementById("infoboxSbPrice");
+            const sbPriceDisplay = document.getElementById("infoboxSbPrice");
             const tradeVolDisplay = document.getElementById("infoboxTradevol");
             const goldVolDisplay = document.getElementById("infoboxGoldvol");
             const weeklyVolDisplay = document.getElementById("infobox7dTradevol");
@@ -252,19 +226,15 @@ function renderChartWithItemId(itemId, containerId) {
 
             // set sb price
             try {
-                let sbiText = '--';
-                let sbIndex = newestPrice.sb_index;
+                let sbPriceText = '--';
+                let sbPrice = newestPrice.sb_price;
                 
-                if (SettingsController.getUseLatestSbPriceForIndex()) {
-                    sbIndex = newestPrice.price / response.latest_sb_data.price;
-                }
-                
-                if (sbIndex >= 100) {
-                    sbiText = Math.round(sbIndex).toLocaleString();
+                if (sbPrice >= 100) {
+                    sbPriceText = Math.round(sbPrice).toLocaleString();
                 } else {
-                    sbiText = sbIndex.toFixed(2).toLocaleString();
+                    sbPriceText = sbPrice.toFixed(2).toLocaleString();
                 }
-                sbIndexDisplay.innerHTML = sbiText;
+                sbPriceDisplay.innerHTML = sbPriceText;
             } catch (e) {
                 // do nothing
             }
@@ -284,7 +254,7 @@ function renderChartWithItemId(itemId, containerId) {
             goldVolDisplay.innerHTML = goldVolText;
 
             // set last week's trade volume
-            let weeklyVolText = response.data.reduce(function(sum, dataPoint) {
+            let weeklyVolText = response.market_data.reduce(function(sum, dataPoint) {
                 if (utcTodayMillis - UtcIsoDateToMillis(dataPoint.date) <= 7 * 86400 * 1000) {
                     return sum + (dataPoint.volume !== null ? dataPoint.volume : 0);
                 } else {
@@ -294,7 +264,7 @@ function renderChartWithItemId(itemId, containerId) {
             weeklyVolDisplay.innerHTML = weeklyVolText.toLocaleString();
 
             // set last week's gold volume
-            let weeklyGoldVol = response.data.reduce(function(sum, dataPoint) {
+            let weeklyGoldVol = response.market_data.reduce(function(sum, dataPoint) {
                 if (utcTodayMillis - UtcIsoDateToMillis(dataPoint.date) <= 7 * 86400 * 1000) {
                     return sum + (dataPoint.volume !== null ? dataPoint.volume * dataPoint.price : 0);
                 } else {
@@ -305,21 +275,21 @@ function renderChartWithItemId(itemId, containerId) {
         }
 
         // process data for highcharts
-        var daily_prices = [];
-        var daily_trade_volume = [];
-        var sbi = [];
-        for (var i = 0; i < response.data.length; i++) {
-            daily_prices.push([
-                UtcIsoDateToMillis(response.data[i].date),
-                Number(response.data[i].price)
+        var dailyPrices = [];
+        var dailyVolumes = [];
+        var dailySbPrices = [];
+        for (var i = 0; i < response.market_data.length; i++) {
+            dailyPrices.push([
+                UtcIsoDateToMillis(response.market_data[i].date),
+                Number(response.market_data[i].price)
             ]);
-            daily_trade_volume.push([
-                UtcIsoDateToMillis(response.data[i].date),
-                Number(response.data[i].volume)
+            dailyVolumes.push([
+                UtcIsoDateToMillis(response.market_data[i].date),
+                Number(response.market_data[i].volume)
             ]);
-            sbi.push([
-                UtcIsoDateToMillis(response.data[i].date),
-                Number(response.data[i].sb_index)
+            dailySbPrices.push([
+                UtcIsoDateToMillis(response.market_data[i].date),
+                Number(response.market_data[i].sb_price)
             ]);
         }
 
@@ -414,10 +384,7 @@ function renderChartWithItemId(itemId, containerId) {
                 labelStyle: {
                     color: axisLabelColor,
                 },
-                //buttonPosition: {align: 'right'},
                 verticalAlign: 'top',
-                //dropdown: 'always',
-                //floating: true,
                 selected: 3,
                 x: -5.5,
             },
@@ -450,7 +417,7 @@ function renderChartWithItemId(itemId, containerId) {
                 {
                     name: 'Average price',
                     id: 'dailyPrice',
-                    data: daily_prices,
+                    data: dailyPrices,
                     lineWidth: 1.5,
                     states: {
                         hover: {
@@ -485,7 +452,7 @@ function renderChartWithItemId(itemId, containerId) {
                 }, {
                     name: 'Volume',
                     type: 'column',
-                    data: daily_trade_volume,
+                    data: dailyVolumes,
                     showInLegend: false,
                     pointPadding: 0, // disable point and group padding to simulate column area chart
                     groupPadding: 0,
@@ -501,9 +468,9 @@ function renderChartWithItemId(itemId, containerId) {
                     },
                     zIndex: 0,
                 }, {
-                    name: 'SB Index',
+                    name: 'SB Price',
                     id: 'sbi',
-                    data: sbi,
+                    data: dailySbPrices,
                     visible: false,
                     lineWidth: 1.5,
                     states: {
@@ -604,7 +571,7 @@ function renderChartWithItemId(itemId, containerId) {
         });
     }
 
-    $.getJSON(`https://${markethuntDomain}/api/stock_data/getjson.php?item_id=${itemId}&plugin_ver=${GM_info.script.version}`, function (response) {
+    $.getJSON(`https://${markethuntApiDomain}/items/${itemId}?plugin_ver=${GM_info.script.version}`, function (response) {
         renderChart(response);
     });
 }
