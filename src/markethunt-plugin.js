@@ -17,8 +17,8 @@
 //
 // ==/UserScript==
 
-var markethuntDomain = 'markethunt.win';
-var markethuntApiDomain = 'api.markethunt.win';
+const markethuntDomain = 'markethunt.win';
+const markethuntApiDomain = 'api.markethunt.win';
 
 MutationObserver =
     window.MutationObserver ||
@@ -27,6 +27,10 @@ MutationObserver =
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const RoundToIntLocaleStringOpts = {
+    maximumFractionDigits: 0
 }
 
 /*******************************
@@ -138,8 +142,10 @@ const UtcTimezone = "T00:00:00+00:00"
 
 // style
 const primaryLineColor = "#4f52aa";
+const secondaryLineColor = "#b91a05";
 const sbiLineColor = "#00c000"
 const volumeColor = "#51cda0";
+const volumeLabelColor = '#3ab28a';
 
 const eventBandColor = "#f2f2f2";
 const eventBandFontColor = "#888888"; // recommend to have same or close color as yGridLineColor for visual clarity
@@ -150,8 +156,6 @@ const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
 const chartFont = "tahoma,arial,sans-serif";
-
-var eventData = [];
 
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
@@ -196,9 +200,9 @@ function updateEventData() {
 
 function renderChartWithItemId(itemId, containerId) {
     itemId = Number(itemId);
+    let eventData = [];
 
     if (localStorage.markethuntEventDatesV2LastRetrieval !== undefined) {
-        eventData = [];
         JSON.parse(localStorage.markethuntEventDatesV2).forEach(event => eventData.push(eventBand(event.start_date, event.end_date, event.short_name)));
 
         if (Date.now() - Number(localStorage.markethuntEventDatesV2LastRetrieval) > 2 * 86400 * 1000) {
@@ -209,7 +213,7 @@ function renderChartWithItemId(itemId, containerId) {
     }
 
     function renderChart(response) {
-        // set stock data HUD
+        // set HUD
         if (response.market_data.length > 0) {
             const newestPrice = response.market_data[response.market_data.length - 1];
             const utcTodayMillis = UtcIsoDateToMillis(new Date().toISOString().substring(0, 10));
@@ -293,6 +297,7 @@ function renderChartWithItemId(itemId, containerId) {
             ]);
         }
 
+        // TODO factor out common options
         Highcharts.setOptions({
             chart: {
                 style: {
@@ -310,7 +315,7 @@ function renderChartWithItemId(itemId, containerId) {
                 series: {
                     //animation: false,
                     dataGrouping: {
-                        enabled: (itemId == 114) ? true : false,
+                        enabled: itemId === 114,
                         units: [['day', [1]], ['week', [1]]],
                         groupPixelWidth: 3,
                     },
@@ -342,7 +347,7 @@ function renderChartWithItemId(itemId, containerId) {
         });
 
         // Create the chart
-        var chart = new Highcharts.stockChart(containerId, {
+        let chart = new Highcharts.stockChart(containerId, {
             // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
             scrollbar: {
                 height: 0,
@@ -434,13 +439,6 @@ function renderChartWithItemId(itemId, containerId) {
                             }
                         },
                     },
-                    point: {
-                        events: {
-                            click: function() {
-                                addToWatchlistModal(parseInt(this.y));
-                            },
-                        },
-                    },
                     tooltip: {
                         pointFormatter: function() {
                             return `<span style="color:${this.color}">\u25CF</span>`
@@ -490,14 +488,16 @@ function renderChartWithItemId(itemId, containerId) {
                     },
                     tooltip: {
                         pointFormatter: function() {
+                            let sbiText;
+
                             if (this.y >= 1000) {
-                                var sbiText = Math.round(this.y).toLocaleString();
+                                sbiText = Math.round(this.y).toLocaleString();
                             } else if (this.y >= 100) {
-                                var sbiText = this.y.toFixed(1).toLocaleString();
+                                sbiText = this.y.toFixed(1).toLocaleString();
                             } else if (this.y >= 10) {
-                                var sbiText = this.y.toFixed(2).toLocaleString();
+                                sbiText = this.y.toFixed(2).toLocaleString();
                             } else {
-                                var sbiText = this.y.toFixed(3).toLocaleString();
+                                sbiText = this.y.toFixed(3).toLocaleString();
                             }
                             return `<span style="color:${this.color}">\u25CF</span>`
                                 + ` SB Index:`
@@ -576,6 +576,305 @@ function renderChartWithItemId(itemId, containerId) {
     });
 }
 
+function renderStockChartWithItemId(itemId, containerId) {
+    itemId = Number(itemId);
+    let eventData = [];
+
+    if (localStorage.markethuntEventDatesV2LastRetrieval !== undefined) {
+        JSON.parse(localStorage.markethuntEventDatesV2).forEach(event => eventData.push(eventBand(event.start_date, event.end_date, event.short_name)));
+    }
+
+    function renderStockChart(response) {
+        const bid_data = [];
+        const ask_data = [];
+        const supply_data = [];
+
+        response.stock_data.forEach(x => {
+            bid_data.push([x.timestamp, x.bid]);
+            ask_data.push([x.timestamp, x.ask]);
+            supply_data.push([x.timestamp, x.supply]);
+        })
+
+        Highcharts.setOptions({
+            chart: {
+                style: {
+                    fontFamily: chartFont,
+                },
+                spacingLeft: 0,
+                spacingRight: 5,
+                spacingTop: 7,
+                spacingBottom: 6,
+            },
+            lang: {
+                rangeSelectorZoom :""
+            },
+            plotOptions: {
+                series: {
+                    dataGrouping: {
+                        enabled: true,
+                        units: [['hour', [1]], ['day', [1]], ['week', [1]]],
+                        groupPixelWidth: 3,
+                        dateTimeLabelFormats: {
+                            hour: ['%b %e, %Y %H:%M UTC'],
+                            day: ['%A, %b %e, %Y'],
+                            week: ['Week from %A, %b %e, %Y'],
+                        }
+                    },
+                    showInLegend: true,
+                },
+            },
+            xAxis: {
+                tickColor: xGridLineColor,
+                gridLineColor: xGridLineColor,
+                labels: {
+                    style: {
+                        color: axisLabelColor,
+                        fontSize: '11px',
+                    }
+                }
+            },
+            yAxis: {
+                gridLineColor: yGridLineColor,
+                labels: {
+                    style: {
+                        color: axisLabelColor,
+                        fontSize: '11px',
+                    },
+                    y: 3,
+                }
+            }
+        });
+
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
+            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
+            scrollbar: {
+                height: 0,
+                buttonArrowColor: "#ffffff00",
+            },
+            title: {
+                enabled: false,
+            },
+            credits: {
+                enabled: false,
+            },
+            rangeSelector: {
+                buttons: [
+                    {
+                        type: 'day',
+                        count: 7,
+                        text: '7D'
+                    }, {
+                        type: 'month',
+                        count: 1,
+                        text: '1M'
+                    }, {
+                        type: 'month',
+                        count: 2,
+                        text: '2M'
+                    }, {
+                        type: 'month',
+                        count: 3,
+                        text: '3M'
+                    }, {
+                        type: 'year',
+                        count: 1,
+                        text: '1Y'
+                    }, {
+                        type: 'all',
+                        text: 'All'
+                    },
+                ],
+                buttonPosition: {
+                    y: 5,
+                },
+                inputEnabled: false,
+                labelStyle: {
+                    color: axisLabelColor,
+                },
+                verticalAlign: 'top',
+                selected: 1,
+                x: -5.5,
+            },
+            legend: {
+                enabled: true,
+                align: 'right',
+                verticalAlign: 'top',
+                y: -23,
+                padding: 0,
+                itemStyle: {
+                    color: '#000000',
+                    fontSize: "13px",
+                },
+            },
+            tooltip: {
+                animation: false,
+                shared: true,
+                split: false,
+                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
+                xDateFormat: '%b %e, %Y %H:%M UTC',
+                backgroundColor: 'rgba(255, 255, 255, 1)',
+                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
+                style: {
+                    color: '#000000',
+                    fontSize: '11px',
+                    fontFamily: chartFont,
+                }
+            },
+            series: [
+                {
+                    name: 'Ask',
+                    id: 'ask',
+                    data: ask_data,
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 0,
+                    color: primaryLineColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}g</b><br/>`;
+                        },
+                    },
+                    zIndex: 1,
+                }, {
+                    name: 'Bid',
+                    id: 'bid',
+                    data: bid_data,
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 0,
+                    color: secondaryLineColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}g</b><br/>`;
+                        },
+                    },
+                    zIndex: 2,
+                }, {
+                    name: 'Supply',
+                    id: 'supply',
+                    data: supply_data,
+                    type: 'area',
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 1,
+                    color: volumeColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}</b><br/>`;
+                        },
+                    },
+                    zIndex: 0,
+                },
+            ],
+            yAxis: [
+                {
+                    min: SettingsController.getStartChartAtZero() ? 0 : null,
+                    labels: {
+                        formatter: function() {
+                            return this.value.toLocaleString() + 'g';
+                        },
+                        x: -8,
+                    },
+                    showLastLabel: true, // show label at top of chart
+                    crosshair: {
+                        dashStyle: 'ShortDot',
+                        color: crosshairColor,
+                    },
+                    opposite: false,
+                    alignTicks: false
+                }, {
+                    top: '75%',
+                    height: '25%',
+                    offset: 0,
+                    min: 0,
+                    opposite: false,
+                    tickPixelInterval: 35,
+                    allowDecimals: false,
+                    alignTicks: false,
+                    gridLineWidth: 0,
+                    labels: {
+                        align: 'left',
+                        x: 0,
+                        style: {
+                            color: volumeLabelColor,
+                        },
+                    },
+                    showLastLabel: true,
+                    showFirstLabel: false,
+                }],
+            xAxis: {
+                type: 'datetime',
+                ordinal: false, // show continuous x axis if dates are missing
+                plotBands: eventData,
+                crosshair: {
+                    dashStyle: 'ShortDot',
+                    color: crosshairColor,
+                },
+                dateTimeLabelFormats:{
+                    day: '%b %e',
+                    week: '%b %e, \'%y',
+                    month: '%b %Y',
+                    year: '%Y'
+                },
+                tickPixelInterval: 120,
+            },
+            navigator: {
+                height: 25,
+                margin: 0,
+                maskInside: false,
+                enabled: false,
+            }
+        });
+    }
+
+    $.getJSON(`https://${markethuntApiDomain}/items/${itemId}/stock?token=${localStorage.apiToken}&plugin_ver=${GM_info.script.version}`, function (response) {
+        renderStockChart(response);
+    });
+}
+
 if (localStorage.markethuntEventDatesV2LastRetrieval === undefined) {
     updateEventData();
 }
@@ -613,11 +912,18 @@ const mpObserver = new MutationObserver(function () {
 
             // Setup chart divs
             const itemId = mpObserverTarget.querySelector(".marketplaceView-item.view").getAttribute("data-item-id");
+
+            const stockDataCheckboxHtml = `
+            <div style="user-select: none; position: absolute; left: 1px; top: 15px;">
+                 <input type="checkbox" id="markethuntShowStockData"><label for="markethuntShowStockData">Stock data</label>
+            </div>`;
+
             targetContainer.insertAdjacentHTML(
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
                     <div id="highchartContainer" style="flex-grow: 1"></div>
-                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px">
+                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px; position: relative;">
+                        ${localStorage.apiToken ? stockDataCheckboxHtml : ''}
                         <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
                             Trade volume:<br>
                             <span id="infoboxTradevol">--</span><br>
@@ -630,9 +936,8 @@ const mpObserver = new MutationObserver(function () {
                         </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a><br>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">Add to Watchlist</a>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">Markethunt</a>
                             <a class="markethunt-settings-link" id="markethuntSettingsLink" href="#" >[Plugin Settings]</a>
                         </div>
                     </div>
@@ -643,7 +948,7 @@ const mpObserver = new MutationObserver(function () {
             itemPriceContainer.classList.add("infobox-stat");
             itemPriceContainer.insertAdjacentHTML(
                 "beforeend",
-                `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" />`
+                `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" alt="SB icon" />`
             );
 
             const itemPriceDisplay = itemPriceContainer.querySelector("span");
@@ -657,6 +962,16 @@ const mpObserver = new MutationObserver(function () {
             infoBox.style.minWidth = `${infoBoxInitialWidth}px`;
 
             itemPriceDisplay.innerHTML = "--";
+
+            // Set stock chart checkbox listener
+            const stockChartCheckbox = document.getElementById('markethuntShowStockData');
+            stockChartCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    renderStockChartWithItemId(itemId, 'highchartContainer');
+                } else {
+                    renderChartWithItemId(itemId, 'highchartContainer');
+                }
+            });
 
             // Set Plugin Settings listener
             const settingsLink = document.getElementById("markethuntSettingsLink");
@@ -736,8 +1051,19 @@ const mp_css_overrides = `
     padding-bottom: 10px;
 }
 .markethunt-cross-link {
-    color: #0000dd;
+    color: #000;
     font-size: 10px;
+    background: #fff;
+    display: block;
+    padding: 0.1em 0;
+    margin: 0.4em 0;
+    box-shadow: #797979 1px 1px 1px 0;
+    border-radius: 0.2em;
+    border: 1px solid #a8a8a8;
+}
+.markethunt-cross-link:hover {
+    color: white;
+    background-color: ${primaryLineColor};
 }
 .markethunt-settings-link {
     color: #6a6a6a;
@@ -970,7 +1296,7 @@ const journal_css_overrides = `
  *******************************/
 
 function addTouchPoint() {
-    if ($('.invImport').length == 0) {
+    if ($('.invImport').length === 0) {
         const invPages = $('.inventory .torn_pages');
         //Inventory History Button
         const invImportElem = document.createElement('li');
@@ -997,7 +1323,7 @@ function submitInv() {
 
     const gold = Number($('.hud_gold').text().replaceAll(/[^\d]/g, ''));
 
-    if (gold === NaN) {
+    if (isNaN(gold)) {
         return;
     }
 
