@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.4.2
+// @version      1.5
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -40,7 +40,7 @@ const RoundToIntLocaleStringOpts = {
  *******************************/
 
 class SettingsController {
-    // TODO: make settings private and convert init into static initializer once greasyfork adds support
+    // TODO: make settings property private and convert init into static initializer once greasyfork adds support
     static settings;
 
     static init() {
@@ -82,6 +82,30 @@ class SettingsController {
     static setEnablePortfolioButtons(value) {
         this.settings.enablePortfolioButtons = value;
     }
+
+    static getEnableFloatingVolumeLabels() {
+        if (this.settings.enableFloatingVolumeLabels === undefined) {
+            return false;
+        } else {
+            return this.settings.enableFloatingVolumeLabels;
+        }
+    }
+
+    static setEnableFloatingVolumeLabels(value) {
+        this.settings.enableFloatingVolumeLabels = value;
+    }
+
+    static getEnableChartAnimation() {
+        if (this.settings.enableChartAnimation === undefined) {
+            return true;
+        } else {
+            return this.settings.enableChartAnimation;
+        }
+    }
+
+    static setEnableChartAnimation(value) {
+        this.settings.enableChartAnimation = value;
+    }
 }
 
 SettingsController.init();
@@ -91,21 +115,41 @@ function openPluginSettings() {
         title: 'Markethunt Plugin Settings',
         content: `
             <div id="markethunt-settings-container">
+                <h1>Chart settings</h1>
                 <label for="checkbox-start-chart-at-zero" class="markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
                         <input id="checkbox-start-chart-at-zero" type="checkbox">
                     </div>
                     <div class="markethunt-settings-row-description">
                         <b>Y-axis starts at 0</b><br>
-                        Make the stock chart Y-axis start at 0 gold/SB
+                        Make the Y-axis start at 0 gold/SB
                     </div>
                 </label>
+                <label for="checkbox-enable-floating-volume-labels" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-enable-floating-volume-labels" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Volume labels</b><br>
+                        Place floating labels indicating volume amount on the left side of the chart
+                    </div>
+                </label>
+                <label for="checkbox-enable-chart-animation" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-enable-chart-animation" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Chart animation</b><br>
+                        Enable chart animations
+                    </div>
+                </label>
+                <h1>Other settings</h1>
                 <label for="checkbox-enable-portfolio-buttons" class="markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
                         <input id="checkbox-enable-portfolio-buttons" type="checkbox">
                     </div>
                     <div class="markethunt-settings-row-description">
-                        <b>Enable Portfolio quick-add buttons</b><br>
+                        <b>Portfolio quick-add buttons</b><br>
                         Place "Add to portfolio" buttons in your marketplace history and journal log
                     </div>
                 </label>
@@ -126,6 +170,18 @@ function openPluginSettings() {
             enablePortfolioButtonsCheckbox.checked = SettingsController.getEnablePortfolioButtons();
             enablePortfolioButtonsCheckbox.addEventListener('change', function(event) {
                 SettingsController.setEnablePortfolioButtons(event.currentTarget.checked);
+            });
+
+            const enableFloatingVolumeLabelsCheckbox = document.getElementById("checkbox-enable-floating-volume-labels");
+            enableFloatingVolumeLabelsCheckbox.checked = SettingsController.getEnableFloatingVolumeLabels();
+            enableFloatingVolumeLabelsCheckbox.addEventListener('change', function(event) {
+                SettingsController.setEnableFloatingVolumeLabels(event.currentTarget.checked);
+            });
+
+            const enableChartAnimationCheckbox = document.getElementById("checkbox-enable-chart-animation");
+            enableChartAnimationCheckbox.checked = SettingsController.getEnableChartAnimation();
+            enableChartAnimationCheckbox.addEventListener('change', function(event) {
+                SettingsController.setEnableChartAnimation(event.currentTarget.checked);
             });
         }
     });
@@ -230,7 +286,7 @@ function renderChartWithItemId(itemId, containerId) {
 
             // set sb price
             try {
-                let sbPriceText = '--';
+                let sbPriceText;
                 let sbPrice = newestPrice.sb_price;
                 
                 if (sbPrice >= 100) {
@@ -300,6 +356,7 @@ function renderChartWithItemId(itemId, containerId) {
         // TODO factor out common options
         Highcharts.setOptions({
             chart: {
+                animation: SettingsController.getEnableChartAnimation(),
                 style: {
                     fontFamily: chartFont,
                 },
@@ -313,7 +370,7 @@ function renderChartWithItemId(itemId, containerId) {
             },
             plotOptions: {
                 series: {
-                    //animation: false,
+                    animation: SettingsController.getEnableChartAnimation(),
                     dataGrouping: {
                         enabled: itemId === 114,
                         units: [['day', [1]], ['week', [1]]],
@@ -536,15 +593,25 @@ function renderChartWithItemId(itemId, containerId) {
                     opposite: true,
                     alignTicks: false,
                 }, {
-                    top: '70%',
-                    height: '30%',
+                    top: '75%',
+                    height: '25%',
                     offset: 0,
+                    min: 0,
                     opposite: false,
                     tickPixelInterval: 35,
                     allowDecimals: false,
                     alignTicks: false,
-                    visible: false,
-
+                    gridLineWidth: 0,
+                    labels: {
+                        enabled: SettingsController.getEnableFloatingVolumeLabels(),
+                        align: 'left',
+                        x: 0,
+                        style: {
+                            color: volumeLabelColor,
+                        },
+                    },
+                    showLastLabel: true,
+                    showFirstLabel: false,
             }],
             xAxis: {
                 type: 'datetime',
@@ -597,6 +664,7 @@ function renderStockChartWithItemId(itemId, containerId) {
 
         Highcharts.setOptions({
             chart: {
+                animation: SettingsController.getEnableChartAnimation(),
                 style: {
                     fontFamily: chartFont,
                 },
@@ -610,6 +678,7 @@ function renderStockChartWithItemId(itemId, containerId) {
             },
             plotOptions: {
                 series: {
+                    animation: SettingsController.getEnableChartAnimation(),
                     dataGrouping: {
                         enabled: true,
                         units: [['hour', [1]], ['day', [1]], ['week', [1]]],
@@ -819,10 +888,6 @@ function renderStockChartWithItemId(itemId, containerId) {
                         x: -8,
                     },
                     showLastLabel: true, // show label at top of chart
-                    crosshair: {
-                        dashStyle: 'ShortDot',
-                        color: crosshairColor,
-                    },
                     opposite: false,
                     alignTicks: false
                 }, {
@@ -836,6 +901,7 @@ function renderStockChartWithItemId(itemId, containerId) {
                     alignTicks: false,
                     gridLineWidth: 0,
                     labels: {
+                        enabled: SettingsController.getEnableFloatingVolumeLabels(),
                         align: 'left',
                         x: 0,
                         style: {
@@ -885,6 +951,14 @@ if (localStorage.markethuntEventDatesV2LastRetrieval === undefined) {
  * 
  *******************************/
 
+// chart-icon-90px.png minified with TinyPNG then converted to base 64
+const chartIconImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAABaCAMAAAAPdrEwAAAAVFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU4H24AAAAG3RSTlMABvTkbYjGz8kamvoO0EYg6H0koqabYVSqNDILUie0AAABU0lEQVRYw+2V2Y6DMAx" +
+    "FyUIgwLB1mxn//3+OhEQd6o5EypUqVT6PoBwcbmIXiqIo78b42traG7w5ftFCFeE1L+bFja7b0x0PVtesDmC1ZbWFpS/V2PQnYgIyfXOmBA9MP3KG/HlI+r9uY46vpj+It7f1tQvWhryL3lNC2" +
+    "wz/BFhn3/CuoS3taU4CPK2Pv7tcc++IYbkIsDxaMv+W+RpGG9wawQ1Q8lPcT27JF147BTuG69y0qZEDzOsYYeKSm3tEwxP52WR2DMb1BSPlU3bHECULeX6f86JkwWBfU9ep+dIhZ4olpsdOwj2" +
+    "bNdVjCzWlowVXmmMDNFYPLbTkVeXBsW/8toW6JPli12Z3QwnFns2i1bxZvJqR6cPUMn2UWqY/gtWUoGqxTJwZlFqeGZhanhmwmhI+Xi3SR6hl+jC1TB+spgRVq1rVqla1qlUNUSuKooD4Az6O4" +
+    "MtRLQLhAAAAAElFTkSuQmCC";
+
 // sb.png minified with TinyPNG then converted to base 64
 const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
       "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
@@ -895,6 +969,12 @@ const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAA
       "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
 
 const mpObserverTarget = document.querySelector("#overlayPopup");
+
+function CurrentViewedItemId() {
+    const itemIdRaw = mpObserverTarget.querySelector(".marketplaceView-item.view")?.dataset.itemId;
+    return itemIdRaw ? Number(itemIdRaw) : null;
+}
+
 const mpObserver = new MutationObserver(function () {
     // Check if the Marketplace interface is open
     if (!mpObserverTarget.querySelector(".marketplaceView")) {
@@ -911,17 +991,19 @@ const mpObserver = new MutationObserver(function () {
             mpObserver.disconnect();
 
             // Setup chart divs
-            const itemId = mpObserverTarget.querySelector(".marketplaceView-item.view").getAttribute("data-item-id");
+            const itemId = CurrentViewedItemId();
 
             const stockDataCheckboxHtml = `
             <div style="user-select: none; position: absolute; left: 1px; top: 15px;">
-                 <input type="checkbox" id="markethuntShowStockData"><label for="markethuntShowStockData">Stock data</label>
+                <label for="markethuntShowStockData"><input type="checkbox" id="markethuntShowStockData">Stock chart</label>
             </div>`;
 
             targetContainer.insertAdjacentHTML(
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
-                    <div id="highchartContainer" style="flex-grow: 1"></div>
+                    <div id="highchartContainer" style="flex-grow: 1">
+                        <img style="opacity: 0.07; margin: 105px 280px" src="${chartIconImageData}" alt="Chart icon">
+                    </div>
                     <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px; position: relative;">
                         ${localStorage.apiToken ? stockDataCheckboxHtml : ''}
                         <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
