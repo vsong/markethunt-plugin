@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.5
+// @version      1.5.1
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -1002,7 +1002,7 @@ const mpObserver = new MutationObserver(function () {
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
                     <div id="highchartContainer" style="flex-grow: 1">
-                        <img style="opacity: 0.07; margin: 105px 280px" src="${chartIconImageData}" alt="Chart icon">
+                        <img style="opacity: 0.07; margin: 105px 240px" src="${chartIconImageData}" alt="Chart icon">
                     </div>
                     <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px; position: relative;">
                         ${localStorage.apiToken ? stockDataCheckboxHtml : ''}
