@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.5.1
+// @version      1.5.2
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -1047,7 +1047,7 @@ const mpObserver = new MutationObserver(function () {
 
             // Set stock chart checkbox listener
             const stockChartCheckbox = document.getElementById('markethuntShowStockData');
-            stockChartCheckbox.addEventListener('change', (e) => {
+            stockChartCheckbox?.addEventListener('change', (e) => {
                 if (e.target.checked) {
                     renderStockChartWithItemId(itemId, 'highchartContainer');
                 } else {
