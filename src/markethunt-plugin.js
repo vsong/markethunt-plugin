@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.4.2
+// @version      1.5
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -17,8 +17,8 @@
 //
 // ==/UserScript==
 
-var markethuntDomain = 'markethunt.win';
-var markethuntApiDomain = 'api.markethunt.win';
+const markethuntDomain = 'markethunt.win';
+const markethuntApiDomain = 'api.markethunt.win';
 
 MutationObserver =
     window.MutationObserver ||
@@ -29,6 +29,10 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+const RoundToIntLocaleStringOpts = {
+    maximumFractionDigits: 0
+}
+
 /*******************************
  * 
  *  Plugin settings  
@@ -36,7 +40,7 @@ function sleep(ms) {
  *******************************/
 
 class SettingsController {
-    // TODO: make settings private and convert init into static initializer once greasyfork adds support
+    // TODO: make settings property private and convert init into static initializer once greasyfork adds support
     static settings;
 
     static init() {
@@ -78,6 +82,30 @@ class SettingsController {
     static setEnablePortfolioButtons(value) {
         this.settings.enablePortfolioButtons = value;
     }
+
+    static getEnableFloatingVolumeLabels() {
+        if (this.settings.enableFloatingVolumeLabels === undefined) {
+            return false;
+        } else {
+            return this.settings.enableFloatingVolumeLabels;
+        }
+    }
+
+    static setEnableFloatingVolumeLabels(value) {
+        this.settings.enableFloatingVolumeLabels = value;
+    }
+
+    static getEnableChartAnimation() {
+        if (this.settings.enableChartAnimation === undefined) {
+            return true;
+        } else {
+            return this.settings.enableChartAnimation;
+        }
+    }
+
+    static setEnableChartAnimation(value) {
+        this.settings.enableChartAnimation = value;
+    }
 }
 
 SettingsController.init();
@@ -87,21 +115,41 @@ function openPluginSettings() {
         title: 'Markethunt Plugin Settings',
         content: `
             <div id="markethunt-settings-container">
+                <h1>Chart settings</h1>
                 <label for="checkbox-start-chart-at-zero" class="markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
                         <input id="checkbox-start-chart-at-zero" type="checkbox">
                     </div>
                     <div class="markethunt-settings-row-description">
                         <b>Y-axis starts at 0</b><br>
-                        Make the stock chart Y-axis start at 0 gold/SB
+                        Make the Y-axis start at 0 gold/SB
                     </div>
                 </label>
+                <label for="checkbox-enable-floating-volume-labels" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-enable-floating-volume-labels" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Volume labels</b><br>
+                        Place floating labels indicating volume amount on the left side of the chart
+                    </div>
+                </label>
+                <label for="checkbox-enable-chart-animation" class="markethunt-settings-row">
+                    <div class="markethunt-settings-row-input">
+                        <input id="checkbox-enable-chart-animation" type="checkbox">
+                    </div>
+                    <div class="markethunt-settings-row-description">
+                        <b>Chart animation</b><br>
+                        Enable chart animations
+                    </div>
+                </label>
+                <h1>Other settings</h1>
                 <label for="checkbox-enable-portfolio-buttons" class="markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
                         <input id="checkbox-enable-portfolio-buttons" type="checkbox">
                     </div>
                     <div class="markethunt-settings-row-description">
-                        <b>Enable Portfolio quick-add buttons</b><br>
+                        <b>Portfolio quick-add buttons</b><br>
                         Place "Add to portfolio" buttons in your marketplace history and journal log
                     </div>
                 </label>
@@ -123,6 +171,18 @@ function openPluginSettings() {
             enablePortfolioButtonsCheckbox.addEventListener('change', function(event) {
                 SettingsController.setEnablePortfolioButtons(event.currentTarget.checked);
             });
+
+            const enableFloatingVolumeLabelsCheckbox = document.getElementById("checkbox-enable-floating-volume-labels");
+            enableFloatingVolumeLabelsCheckbox.checked = SettingsController.getEnableFloatingVolumeLabels();
+            enableFloatingVolumeLabelsCheckbox.addEventListener('change', function(event) {
+                SettingsController.setEnableFloatingVolumeLabels(event.currentTarget.checked);
+            });
+
+            const enableChartAnimationCheckbox = document.getElementById("checkbox-enable-chart-animation");
+            enableChartAnimationCheckbox.checked = SettingsController.getEnableChartAnimation();
+            enableChartAnimationCheckbox.addEventListener('change', function(event) {
+                SettingsController.setEnableChartAnimation(event.currentTarget.checked);
+            });
         }
     });
 }
@@ -138,8 +198,10 @@ const UtcTimezone = "T00:00:00+00:00"
 
 // style
 const primaryLineColor = "#4f52aa";
+const secondaryLineColor = "#b91a05";
 const sbiLineColor = "#00c000"
 const volumeColor = "#51cda0";
+const volumeLabelColor = '#3ab28a';
 
 const eventBandColor = "#f2f2f2";
 const eventBandFontColor = "#888888"; // recommend to have same or close color as yGridLineColor for visual clarity
@@ -150,8 +212,6 @@ const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
 const chartFont = "tahoma,arial,sans-serif";
-
-var eventData = [];
 
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
@@ -196,9 +256,9 @@ function updateEventData() {
 
 function renderChartWithItemId(itemId, containerId) {
     itemId = Number(itemId);
+    let eventData = [];
 
     if (localStorage.markethuntEventDatesV2LastRetrieval !== undefined) {
-        eventData = [];
         JSON.parse(localStorage.markethuntEventDatesV2).forEach(event => eventData.push(eventBand(event.start_date, event.end_date, event.short_name)));
 
         if (Date.now() - Number(localStorage.markethuntEventDatesV2LastRetrieval) > 2 * 86400 * 1000) {
@@ -209,7 +269,7 @@ function renderChartWithItemId(itemId, containerId) {
     }
 
     function renderChart(response) {
-        // set stock data HUD
+        // set HUD
         if (response.market_data.length > 0) {
             const newestPrice = response.market_data[response.market_data.length - 1];
             const utcTodayMillis = UtcIsoDateToMillis(new Date().toISOString().substring(0, 10));
@@ -226,7 +286,7 @@ function renderChartWithItemId(itemId, containerId) {
 
             // set sb price
             try {
-                let sbPriceText = '--';
+                let sbPriceText;
                 let sbPrice = newestPrice.sb_price;
                 
                 if (sbPrice >= 100) {
@@ -293,8 +353,10 @@ function renderChartWithItemId(itemId, containerId) {
             ]);
         }
 
+        // TODO factor out common options
         Highcharts.setOptions({
             chart: {
+                animation: SettingsController.getEnableChartAnimation(),
                 style: {
                     fontFamily: chartFont,
                 },
@@ -308,9 +370,9 @@ function renderChartWithItemId(itemId, containerId) {
             },
             plotOptions: {
                 series: {
-                    //animation: false,
+                    animation: SettingsController.getEnableChartAnimation(),
                     dataGrouping: {
-                        enabled: (itemId == 114) ? true : false,
+                        enabled: itemId === 114,
                         units: [['day', [1]], ['week', [1]]],
                         groupPixelWidth: 3,
                     },
@@ -342,7 +404,7 @@ function renderChartWithItemId(itemId, containerId) {
         });
 
         // Create the chart
-        var chart = new Highcharts.stockChart(containerId, {
+        let chart = new Highcharts.stockChart(containerId, {
             // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
             scrollbar: {
                 height: 0,
@@ -434,13 +496,6 @@ function renderChartWithItemId(itemId, containerId) {
                             }
                         },
                     },
-                    point: {
-                        events: {
-                            click: function() {
-                                addToWatchlistModal(parseInt(this.y));
-                            },
-                        },
-                    },
                     tooltip: {
                         pointFormatter: function() {
                             return `<span style="color:${this.color}">\u25CF</span>`
@@ -490,14 +545,16 @@ function renderChartWithItemId(itemId, containerId) {
                     },
                     tooltip: {
                         pointFormatter: function() {
+                            let sbiText;
+
                             if (this.y >= 1000) {
-                                var sbiText = Math.round(this.y).toLocaleString();
+                                sbiText = Math.round(this.y).toLocaleString();
                             } else if (this.y >= 100) {
-                                var sbiText = this.y.toFixed(1).toLocaleString();
+                                sbiText = this.y.toFixed(1).toLocaleString();
                             } else if (this.y >= 10) {
-                                var sbiText = this.y.toFixed(2).toLocaleString();
+                                sbiText = this.y.toFixed(2).toLocaleString();
                             } else {
-                                var sbiText = this.y.toFixed(3).toLocaleString();
+                                sbiText = this.y.toFixed(3).toLocaleString();
                             }
                             return `<span style="color:${this.color}">\u25CF</span>`
                                 + ` SB Index:`
@@ -536,15 +593,25 @@ function renderChartWithItemId(itemId, containerId) {
                     opposite: true,
                     alignTicks: false,
                 }, {
-                    top: '70%',
-                    height: '30%',
+                    top: '75%',
+                    height: '25%',
                     offset: 0,
+                    min: 0,
                     opposite: false,
                     tickPixelInterval: 35,
                     allowDecimals: false,
                     alignTicks: false,
-                    visible: false,
-
+                    gridLineWidth: 0,
+                    labels: {
+                        enabled: SettingsController.getEnableFloatingVolumeLabels(),
+                        align: 'left',
+                        x: 0,
+                        style: {
+                            color: volumeLabelColor,
+                        },
+                    },
+                    showLastLabel: true,
+                    showFirstLabel: false,
             }],
             xAxis: {
                 type: 'datetime',
@@ -576,6 +643,304 @@ function renderChartWithItemId(itemId, containerId) {
     });
 }
 
+function renderStockChartWithItemId(itemId, containerId) {
+    itemId = Number(itemId);
+    let eventData = [];
+
+    if (localStorage.markethuntEventDatesV2LastRetrieval !== undefined) {
+        JSON.parse(localStorage.markethuntEventDatesV2).forEach(event => eventData.push(eventBand(event.start_date, event.end_date, event.short_name)));
+    }
+
+    function renderStockChart(response) {
+        const bid_data = [];
+        const ask_data = [];
+        const supply_data = [];
+
+        response.stock_data.forEach(x => {
+            bid_data.push([x.timestamp, x.bid]);
+            ask_data.push([x.timestamp, x.ask]);
+            supply_data.push([x.timestamp, x.supply]);
+        })
+
+        Highcharts.setOptions({
+            chart: {
+                animation: SettingsController.getEnableChartAnimation(),
+                style: {
+                    fontFamily: chartFont,
+                },
+                spacingLeft: 0,
+                spacingRight: 5,
+                spacingTop: 7,
+                spacingBottom: 6,
+            },
+            lang: {
+                rangeSelectorZoom :""
+            },
+            plotOptions: {
+                series: {
+                    animation: SettingsController.getEnableChartAnimation(),
+                    dataGrouping: {
+                        enabled: true,
+                        units: [['hour', [1]], ['day', [1]], ['week', [1]]],
+                        groupPixelWidth: 3,
+                        dateTimeLabelFormats: {
+                            hour: ['%b %e, %Y %H:%M UTC'],
+                            day: ['%A, %b %e, %Y'],
+                            week: ['Week from %A, %b %e, %Y'],
+                        }
+                    },
+                    showInLegend: true,
+                },
+            },
+            xAxis: {
+                tickColor: xGridLineColor,
+                gridLineColor: xGridLineColor,
+                labels: {
+                    style: {
+                        color: axisLabelColor,
+                        fontSize: '11px',
+                    }
+                }
+            },
+            yAxis: {
+                gridLineColor: yGridLineColor,
+                labels: {
+                    style: {
+                        color: axisLabelColor,
+                        fontSize: '11px',
+                    },
+                    y: 3,
+                }
+            }
+        });
+
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
+            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
+            scrollbar: {
+                height: 0,
+                buttonArrowColor: "#ffffff00",
+            },
+            title: {
+                enabled: false,
+            },
+            credits: {
+                enabled: false,
+            },
+            rangeSelector: {
+                buttons: [
+                    {
+                        type: 'day',
+                        count: 7,
+                        text: '7D'
+                    }, {
+                        type: 'month',
+                        count: 1,
+                        text: '1M'
+                    }, {
+                        type: 'month',
+                        count: 2,
+                        text: '2M'
+                    }, {
+                        type: 'month',
+                        count: 3,
+                        text: '3M'
+                    }, {
+                        type: 'year',
+                        count: 1,
+                        text: '1Y'
+                    }, {
+                        type: 'all',
+                        text: 'All'
+                    },
+                ],
+                buttonPosition: {
+                    y: 5,
+                },
+                inputEnabled: false,
+                labelStyle: {
+                    color: axisLabelColor,
+                },
+                verticalAlign: 'top',
+                selected: 1,
+                x: -5.5,
+            },
+            legend: {
+                enabled: true,
+                align: 'right',
+                verticalAlign: 'top',
+                y: -23,
+                padding: 0,
+                itemStyle: {
+                    color: '#000000',
+                    fontSize: "13px",
+                },
+            },
+            tooltip: {
+                animation: false,
+                shared: true,
+                split: false,
+                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
+                xDateFormat: '%b %e, %Y %H:%M UTC',
+                backgroundColor: 'rgba(255, 255, 255, 1)',
+                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
+                style: {
+                    color: '#000000',
+                    fontSize: '11px',
+                    fontFamily: chartFont,
+                }
+            },
+            series: [
+                {
+                    name: 'Ask',
+                    id: 'ask',
+                    data: ask_data,
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 0,
+                    color: primaryLineColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}g</b><br/>`;
+                        },
+                    },
+                    zIndex: 1,
+                }, {
+                    name: 'Bid',
+                    id: 'bid',
+                    data: bid_data,
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 0,
+                    color: secondaryLineColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}g</b><br/>`;
+                        },
+                    },
+                    zIndex: 2,
+                }, {
+                    name: 'Supply',
+                    id: 'supply',
+                    data: supply_data,
+                    type: 'area',
+                    lineWidth: 1.5,
+                    states: {
+                        hover: {
+                            lineWidthPlus: 0,
+                            halo: false, // disable translucent halo on marker hover
+                        }
+                    },
+                    yAxis: 1,
+                    color: volumeColor,
+                    marker: {
+                        states: {
+                            hover: {
+                                lineWidth: 0,
+                            }
+                        },
+                    },
+                    tooltip: {
+                        pointFormatter: function() {
+                            return `<span style="color:${this.color}">\u25CF</span>`
+                                + ` ${this.series.name}:`
+                                + ` <b>${this.y.toLocaleString(undefined, RoundToIntLocaleStringOpts)}</b><br/>`;
+                        },
+                    },
+                    zIndex: 0,
+                },
+            ],
+            yAxis: [
+                {
+                    min: SettingsController.getStartChartAtZero() ? 0 : null,
+                    labels: {
+                        formatter: function() {
+                            return this.value.toLocaleString() + 'g';
+                        },
+                        x: -8,
+                    },
+                    showLastLabel: true, // show label at top of chart
+                    opposite: false,
+                    alignTicks: false
+                }, {
+                    top: '75%',
+                    height: '25%',
+                    offset: 0,
+                    min: 0,
+                    opposite: false,
+                    tickPixelInterval: 35,
+                    allowDecimals: false,
+                    alignTicks: false,
+                    gridLineWidth: 0,
+                    labels: {
+                        enabled: SettingsController.getEnableFloatingVolumeLabels(),
+                        align: 'left',
+                        x: 0,
+                        style: {
+                            color: volumeLabelColor,
+                        },
+                    },
+                    showLastLabel: true,
+                    showFirstLabel: false,
+                }],
+            xAxis: {
+                type: 'datetime',
+                ordinal: false, // show continuous x axis if dates are missing
+                plotBands: eventData,
+                crosshair: {
+                    dashStyle: 'ShortDot',
+                    color: crosshairColor,
+                },
+                dateTimeLabelFormats:{
+                    day: '%b %e',
+                    week: '%b %e, \'%y',
+                    month: '%b %Y',
+                    year: '%Y'
+                },
+                tickPixelInterval: 120,
+            },
+            navigator: {
+                height: 25,
+                margin: 0,
+                maskInside: false,
+                enabled: false,
+            }
+        });
+    }
+
+    $.getJSON(`https://${markethuntApiDomain}/items/${itemId}/stock?token=${localStorage.apiToken}&plugin_ver=${GM_info.script.version}`, function (response) {
+        renderStockChart(response);
+    });
+}
+
 if (localStorage.markethuntEventDatesV2LastRetrieval === undefined) {
     updateEventData();
 }
@@ -585,6 +950,14 @@ if (localStorage.markethuntEventDatesV2LastRetrieval === undefined) {
  *  Marketplace view observer  
  * 
  *******************************/
+
+// chart-icon-90px.png minified with TinyPNG then converted to base 64
+const chartIconImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAABaCAMAAAAPdrEwAAAAVFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU4H24AAAAG3RSTlMABvTkbYjGz8kamvoO0EYg6H0koqabYVSqNDILUie0AAABU0lEQVRYw+2V2Y6DMAx" +
+    "FyUIgwLB1mxn//3+OhEQd6o5EypUqVT6PoBwcbmIXiqIo78b42traG7w5ftFCFeE1L+bFja7b0x0PVtesDmC1ZbWFpS/V2PQnYgIyfXOmBA9MP3KG/HlI+r9uY46vpj+It7f1tQvWhryL3lNC2" +
+    "wz/BFhn3/CuoS3taU4CPK2Pv7tcc++IYbkIsDxaMv+W+RpGG9wawQ1Q8lPcT27JF147BTuG69y0qZEDzOsYYeKSm3tEwxP52WR2DMb1BSPlU3bHECULeX6f86JkwWBfU9ep+dIhZ4olpsdOwj2" +
+    "bNdVjCzWlowVXmmMDNFYPLbTkVeXBsW/8toW6JPli12Z3QwnFns2i1bxZvJqR6cPUMn2UWqY/gtWUoGqxTJwZlFqeGZhanhmwmhI+Xi3SR6hl+jC1TB+spgRVq1rVqla1qlUNUSuKooD4Az6O4" +
+    "MtRLQLhAAAAAElFTkSuQmCC";
 
 // sb.png minified with TinyPNG then converted to base 64
 const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
@@ -596,6 +969,12 @@ const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAA
       "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
 
 const mpObserverTarget = document.querySelector("#overlayPopup");
+
+function CurrentViewedItemId() {
+    const itemIdRaw = mpObserverTarget.querySelector(".marketplaceView-item.view")?.dataset.itemId;
+    return itemIdRaw ? Number(itemIdRaw) : null;
+}
+
 const mpObserver = new MutationObserver(function () {
     // Check if the Marketplace interface is open
     if (!mpObserverTarget.querySelector(".marketplaceView")) {
@@ -612,12 +991,21 @@ const mpObserver = new MutationObserver(function () {
             mpObserver.disconnect();
 
             // Setup chart divs
-            const itemId = mpObserverTarget.querySelector(".marketplaceView-item.view").getAttribute("data-item-id");
+            const itemId = CurrentViewedItemId();
+
+            const stockDataCheckboxHtml = `
+            <div style="user-select: none; position: absolute; left: 1px; top: 15px;">
+                <label for="markethuntShowStockData"><input type="checkbox" id="markethuntShowStockData">Stock chart</label>
+            </div>`;
+
             targetContainer.insertAdjacentHTML(
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
-                    <div id="highchartContainer" style="flex-grow: 1"></div>
-                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px">
+                    <div id="highchartContainer" style="flex-grow: 1">
+                        <img style="opacity: 0.07; margin: 105px 280px" src="${chartIconImageData}" alt="Chart icon">
+                    </div>
+                    <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px; position: relative;">
+                        ${localStorage.apiToken ? stockDataCheckboxHtml : ''}
                         <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
                             Trade volume:<br>
                             <span id="infoboxTradevol">--</span><br>
@@ -630,9 +1018,8 @@ const mpObserver = new MutationObserver(function () {
                         </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">[Add to Watchlist]</a><br>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/portfolio.php?action=add_position&item_id=${itemId}" target="_blank">[Add to Portfolio]</a><br>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">[View on Markethunt]</a><br>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">Add to Watchlist</a>
+                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">Markethunt</a>
                             <a class="markethunt-settings-link" id="markethuntSettingsLink" href="#" >[Plugin Settings]</a>
                         </div>
                     </div>
@@ -643,7 +1030,7 @@ const mpObserver = new MutationObserver(function () {
             itemPriceContainer.classList.add("infobox-stat");
             itemPriceContainer.insertAdjacentHTML(
                 "beforeend",
-                `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" />`
+                `<br><span id="infoboxSbPrice" class="marketplaceView-sbValue">--</span><img style="vertical-align: bottom" src="${sbImageData}" alt="SB icon" />`
             );
 
             const itemPriceDisplay = itemPriceContainer.querySelector("span");
@@ -657,6 +1044,16 @@ const mpObserver = new MutationObserver(function () {
             infoBox.style.minWidth = `${infoBoxInitialWidth}px`;
 
             itemPriceDisplay.innerHTML = "--";
+
+            // Set stock chart checkbox listener
+            const stockChartCheckbox = document.getElementById('markethuntShowStockData');
+            stockChartCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    renderStockChartWithItemId(itemId, 'highchartContainer');
+                } else {
+                    renderChartWithItemId(itemId, 'highchartContainer');
+                }
+            });
 
             // Set Plugin Settings listener
             const settingsLink = document.getElementById("markethuntSettingsLink");
@@ -736,8 +1133,19 @@ const mp_css_overrides = `
     padding-bottom: 10px;
 }
 .markethunt-cross-link {
-    color: #0000dd;
+    color: #000;
     font-size: 10px;
+    background: #fff;
+    display: block;
+    padding: 0.1em 0;
+    margin: 0.4em 0;
+    box-shadow: #797979 1px 1px 1px 0;
+    border-radius: 0.2em;
+    border: 1px solid #a8a8a8;
+}
+.markethunt-cross-link:hover {
+    color: white;
+    background-color: ${primaryLineColor};
 }
 .markethunt-settings-link {
     color: #6a6a6a;
@@ -970,7 +1378,7 @@ const journal_css_overrides = `
  *******************************/
 
 function addTouchPoint() {
-    if ($('.invImport').length == 0) {
+    if ($('.invImport').length === 0) {
         const invPages = $('.inventory .torn_pages');
         //Inventory History Button
         const invImportElem = document.createElement('li');
@@ -997,7 +1405,7 @@ function submitInv() {
 
     const gold = Number($('.hud_gold').text().replaceAll(/[^\d]/g, ''));
 
-    if (gold === NaN) {
+    if (isNaN(gold)) {
         return;
     }
 
