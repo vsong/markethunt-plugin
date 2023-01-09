@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.5.2
+// @version      1.5.3
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -356,7 +356,8 @@ function renderChartWithItemId(itemId, containerId) {
         // TODO factor out common options
         Highcharts.setOptions({
             chart: {
-                animation: SettingsController.getEnableChartAnimation(),
+                // zoom animations
+                animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
                 style: {
                     fontFamily: chartFont,
                 },
@@ -370,7 +371,8 @@ function renderChartWithItemId(itemId, containerId) {
             },
             plotOptions: {
                 series: {
-                    animation: SettingsController.getEnableChartAnimation(),
+                    // initial animation
+                    animation: SettingsController.getEnableChartAnimation() ? { 'duration': 900 } : false,
                     dataGrouping: {
                         enabled: itemId === 114,
                         units: [['day', [1]], ['week', [1]]],
@@ -664,7 +666,8 @@ function renderStockChartWithItemId(itemId, containerId) {
 
         Highcharts.setOptions({
             chart: {
-                animation: SettingsController.getEnableChartAnimation(),
+                // zoom animations
+                animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
                 style: {
                     fontFamily: chartFont,
                 },
@@ -678,7 +681,8 @@ function renderStockChartWithItemId(itemId, containerId) {
             },
             plotOptions: {
                 series: {
-                    animation: SettingsController.getEnableChartAnimation(),
+                    // initial animation
+                    animation: SettingsController.getEnableChartAnimation() ? { 'duration': 900 } : false,
                     dataGrouping: {
                         enabled: true,
                         units: [['hour', [1]], ['day', [1]], ['week', [1]]],
