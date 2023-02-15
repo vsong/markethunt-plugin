@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.5.3
+// @version      1.6.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -213,6 +213,99 @@ const crosshairColor = "#252525";
 
 const chartFont = "tahoma,arial,sans-serif";
 
+// set global opts
+Highcharts.setOptions({
+    chart: {
+        style: {
+            fontFamily: chartFont,
+        },
+        spacingLeft: 0,
+        spacingRight: 5,
+        spacingTop: 7,
+        spacingBottom: 6,
+    },
+    lang: {
+        rangeSelectorZoom :""
+    },
+    plotOptions: {
+        series: {
+            showInLegend: true,
+        },
+    },
+    // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
+    scrollbar: {
+        height: 0,
+        buttonArrowColor: "#ffffff00",
+    },
+    title: {
+        enabled: false,
+    },
+    credits: {
+        enabled: false,
+    },
+    rangeSelector: {
+        buttonPosition: {
+            y: 5,
+        },
+        inputEnabled: false,
+        labelStyle: {
+            color: axisLabelColor,
+        },
+        verticalAlign: 'top',
+        selected: 3,
+        x: -5.5,
+    },
+    legend: {
+        align: 'right',
+        verticalAlign: 'top',
+        y: -23,
+        padding: 0,
+        itemStyle: {
+            color: '#000000',
+            fontSize: "13px",
+        },
+    },
+    tooltip: {
+        animation: false,
+        shared: true,
+        split: false,
+        headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
+        backgroundColor: 'rgba(255, 255, 255, 1)',
+        hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
+        style: {
+            color: '#000000',
+            fontSize: '11px',
+            fontFamily: chartFont,
+        }
+    },
+    navigator: {
+        height: 25,
+        margin: 0,
+        maskInside: false,
+        enabled: false,
+    },
+    xAxis: {
+        tickColor: xGridLineColor,
+        gridLineColor: xGridLineColor,
+        labels: {
+            style: {
+                color: axisLabelColor,
+                fontSize: '11px',
+            }
+        }
+    },
+    yAxis: {
+        gridLineColor: yGridLineColor,
+        labels: {
+            style: {
+                color: axisLabelColor,
+                fontSize: '11px',
+            },
+            y: 3,
+        }
+    }
+});
+
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
 }
@@ -353,21 +446,11 @@ function renderChartWithItemId(itemId, containerId) {
             ]);
         }
 
-        // TODO factor out common options
-        Highcharts.setOptions({
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
             chart: {
                 // zoom animations
                 animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
-                style: {
-                    fontFamily: chartFont,
-                },
-                spacingLeft: 0,
-                spacingRight: 5,
-                spacingTop: 7,
-                spacingBottom: 6,
-            },
-            lang: {
-                rangeSelectorZoom :""
             },
             plotOptions: {
                 series: {
@@ -378,45 +461,7 @@ function renderChartWithItemId(itemId, containerId) {
                         units: [['day', [1]], ['week', [1]]],
                         groupPixelWidth: 3,
                     },
-                    showInLegend: true,
                 },
-            },
-            xAxis: {
-                // lineColor: '#555',
-                tickColor: xGridLineColor,
-                // gridLineWidth: 1,
-                gridLineColor: xGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    }
-                }
-            },
-            yAxis: {
-                gridLineColor: yGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    },
-                    y: 3,
-                }
-            }
-        });
-
-        // Create the chart
-        let chart = new Highcharts.stockChart(containerId, {
-            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
-            scrollbar: {
-                height: 0,
-                buttonArrowColor: "#ffffff00",
-            },
-            title: {
-                enabled: false,
-            },
-            credits: {
-                enabled: false,
             },
             rangeSelector: {
                 buttons: [
@@ -441,41 +486,12 @@ function renderChartWithItemId(itemId, containerId) {
                         text: 'All'
                     },
                 ],
-                buttonPosition: {
-                    y: 5,
-                },
-                inputEnabled: false,
-                labelStyle: {
-                    color: axisLabelColor,
-                },
-                verticalAlign: 'top',
-                selected: 3,
-                x: -5.5,
             },
             legend: {
-                enabled: true,
-                align: 'right',
-                verticalAlign: 'top',
-                y: -23,
-                padding: 0,
-                itemStyle: {
-                    color: '#000000',
-                    fontSize: "13px",
-                },
+                enabled: true
             },
             tooltip: {
-                animation: false,
-                shared: true,
-                split: false,
-                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
                 xDateFormat: '%b %e, %Y',
-                backgroundColor: 'rgba(255, 255, 255, 1)',
-                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
-                style: {
-                    color: '#000000',
-                    fontSize: '11px',
-                    fontFamily: chartFont,
-                }
             },
             series: [
                 {
@@ -510,7 +526,6 @@ function renderChartWithItemId(itemId, containerId) {
                     name: 'Volume',
                     type: 'column',
                     data: dailyVolumes,
-                    showInLegend: false,
                     pointPadding: 0, // disable point and group padding to simulate column area chart
                     groupPadding: 0,
                     yAxis: 2,
@@ -631,12 +646,6 @@ function renderChartWithItemId(itemId, containerId) {
                 },
                 tickPixelInterval: 120,
             },
-            navigator: {
-                height: 25,
-                margin: 0,
-                maskInside: false,
-                enabled: false,
-            }
         });
     }
 
@@ -664,20 +673,11 @@ function renderStockChartWithItemId(itemId, containerId) {
             supply_data.push([x.timestamp, x.supply]);
         })
 
-        Highcharts.setOptions({
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
             chart: {
                 // zoom animations
                 animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
-                style: {
-                    fontFamily: chartFont,
-                },
-                spacingLeft: 0,
-                spacingRight: 5,
-                spacingTop: 7,
-                spacingBottom: 6,
-            },
-            lang: {
-                rangeSelectorZoom :""
             },
             plotOptions: {
                 series: {
@@ -693,43 +693,7 @@ function renderStockChartWithItemId(itemId, containerId) {
                             week: ['Week from %A, %b %e, %Y'],
                         }
                     },
-                    showInLegend: true,
                 },
-            },
-            xAxis: {
-                tickColor: xGridLineColor,
-                gridLineColor: xGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    }
-                }
-            },
-            yAxis: {
-                gridLineColor: yGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    },
-                    y: 3,
-                }
-            }
-        });
-
-        // Create the chart
-        let chart = new Highcharts.stockChart(containerId, {
-            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
-            scrollbar: {
-                height: 0,
-                buttonArrowColor: "#ffffff00",
-            },
-            title: {
-                enabled: false,
-            },
-            credits: {
-                enabled: false,
             },
             rangeSelector: {
                 buttons: [
@@ -758,41 +722,12 @@ function renderStockChartWithItemId(itemId, containerId) {
                         text: 'All'
                     },
                 ],
-                buttonPosition: {
-                    y: 5,
-                },
-                inputEnabled: false,
-                labelStyle: {
-                    color: axisLabelColor,
-                },
-                verticalAlign: 'top',
-                selected: 1,
-                x: -5.5,
             },
             legend: {
-                enabled: true,
-                align: 'right',
-                verticalAlign: 'top',
-                y: -23,
-                padding: 0,
-                itemStyle: {
-                    color: '#000000',
-                    fontSize: "13px",
-                },
+                enabled: true
             },
             tooltip: {
-                animation: false,
-                shared: true,
-                split: false,
-                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
                 xDateFormat: '%b %e, %Y %H:%M UTC',
-                backgroundColor: 'rgba(255, 255, 255, 1)',
-                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
-                style: {
-                    color: '#000000',
-                    fontSize: '11px',
-                    fontFamily: chartFont,
-                }
             },
             series: [
                 {
@@ -930,12 +865,6 @@ function renderStockChartWithItemId(itemId, containerId) {
                     year: '%Y'
                 },
                 tickPixelInterval: 120,
-            },
-            navigator: {
-                height: 25,
-                margin: 0,
-                maskInside: false,
-                enabled: false,
             }
         });
     }
