@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.5.3
+// @version      1.6.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -116,39 +116,43 @@ function openPluginSettings() {
         content: `
             <div id="markethunt-settings-container">
                 <h1>Chart settings</h1>
-                <label for="checkbox-start-chart-at-zero" class="markethunt-settings-row">
+                <label for="checkbox-start-chart-at-zero" class="cl-switch markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
-                        <input id="checkbox-start-chart-at-zero" type="checkbox">
+                        <input id="checkbox-start-chart-at-zero" type="checkbox" ${SettingsController.getStartChartAtZero() ? 'checked' : ''}>
+                        <span class="switcher"></span>
                     </div>
-                    <div class="markethunt-settings-row-description">
+                    <div class="label markethunt-settings-row-description">
                         <b>Y-axis starts at 0</b><br>
                         Make the Y-axis start at 0 gold/SB
                     </div>
                 </label>
-                <label for="checkbox-enable-floating-volume-labels" class="markethunt-settings-row">
+                <label for="checkbox-enable-floating-volume-labels" class="cl-switch markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
-                        <input id="checkbox-enable-floating-volume-labels" type="checkbox">
+                        <input id="checkbox-enable-floating-volume-labels" type="checkbox" ${SettingsController.getEnableFloatingVolumeLabels() ? 'checked' : ''}>
+                        <span class="switcher"></span>
                     </div>
-                    <div class="markethunt-settings-row-description">
+                    <div class="label markethunt-settings-row-description">
                         <b>Volume labels</b><br>
                         Place floating labels indicating volume amount on the left side of the chart
                     </div>
                 </label>
-                <label for="checkbox-enable-chart-animation" class="markethunt-settings-row">
+                <label for="checkbox-enable-chart-animation" class="cl-switch markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
-                        <input id="checkbox-enable-chart-animation" type="checkbox">
+                        <input id="checkbox-enable-chart-animation" type="checkbox" ${SettingsController.getEnableChartAnimation() ? 'checked' : ''}>
+                        <span class="switcher"></span>
                     </div>
-                    <div class="markethunt-settings-row-description">
+                    <div class="label markethunt-settings-row-description">
                         <b>Chart animation</b><br>
                         Enable chart animations
                     </div>
                 </label>
                 <h1>Other settings</h1>
-                <label for="checkbox-enable-portfolio-buttons" class="markethunt-settings-row">
+                <label for="checkbox-enable-portfolio-buttons" class="cl-switch markethunt-settings-row">
                     <div class="markethunt-settings-row-input">
-                        <input id="checkbox-enable-portfolio-buttons" type="checkbox">
+                        <input id="checkbox-enable-portfolio-buttons" type="checkbox" ${SettingsController.getEnablePortfolioButtons() ? 'checked' : ''}>
+                        <span class="switcher"></span>
                     </div>
-                    <div class="markethunt-settings-row-description">
+                    <div class="label markethunt-settings-row-description">
                         <b>Portfolio quick-add buttons</b><br>
                         Place "Add to portfolio" buttons in your marketplace history and journal log
                     </div>
@@ -161,25 +165,21 @@ function openPluginSettings() {
         draggable: true,
         onOpen: function(){
             const startChartAtZeroCheckbox = document.getElementById("checkbox-start-chart-at-zero");
-            startChartAtZeroCheckbox.checked = SettingsController.getStartChartAtZero();
             startChartAtZeroCheckbox.addEventListener('change', function(event) {
                 SettingsController.setStartChartAtZero(event.currentTarget.checked);
             });
 
             const enablePortfolioButtonsCheckbox = document.getElementById("checkbox-enable-portfolio-buttons");
-            enablePortfolioButtonsCheckbox.checked = SettingsController.getEnablePortfolioButtons();
             enablePortfolioButtonsCheckbox.addEventListener('change', function(event) {
                 SettingsController.setEnablePortfolioButtons(event.currentTarget.checked);
             });
 
             const enableFloatingVolumeLabelsCheckbox = document.getElementById("checkbox-enable-floating-volume-labels");
-            enableFloatingVolumeLabelsCheckbox.checked = SettingsController.getEnableFloatingVolumeLabels();
             enableFloatingVolumeLabelsCheckbox.addEventListener('change', function(event) {
                 SettingsController.setEnableFloatingVolumeLabels(event.currentTarget.checked);
             });
 
             const enableChartAnimationCheckbox = document.getElementById("checkbox-enable-chart-animation");
-            enableChartAnimationCheckbox.checked = SettingsController.getEnableChartAnimation();
             enableChartAnimationCheckbox.addEventListener('change', function(event) {
                 SettingsController.setEnableChartAnimation(event.currentTarget.checked);
             });
@@ -212,6 +212,98 @@ const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
 const chartFont = "tahoma,arial,sans-serif";
+
+// set global opts
+Highcharts.setOptions({
+    chart: {
+        style: {
+            fontFamily: chartFont,
+        },
+        spacingLeft: 0,
+        spacingRight: 5,
+        spacingTop: 7,
+        spacingBottom: 6,
+    },
+    lang: {
+        rangeSelectorZoom :""
+    },
+    plotOptions: {
+        series: {
+            showInLegend: true,
+        },
+    },
+    // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
+    scrollbar: {
+        height: 0,
+        buttonArrowColor: "#ffffff00",
+    },
+    title: {
+        enabled: false,
+    },
+    credits: {
+        enabled: false,
+    },
+    rangeSelector: {
+        buttonPosition: {
+            y: 5,
+        },
+        inputEnabled: false,
+        labelStyle: {
+            color: axisLabelColor,
+        },
+        verticalAlign: 'top',
+        x: -5.5,
+    },
+    legend: {
+        align: 'right',
+        verticalAlign: 'top',
+        y: -23,
+        padding: 0,
+        itemStyle: {
+            color: '#000000',
+            fontSize: "13px",
+        },
+    },
+    tooltip: {
+        animation: false,
+        shared: true,
+        split: false,
+        headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
+        backgroundColor: 'rgba(255, 255, 255, 1)',
+        hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
+        style: {
+            color: '#000000',
+            fontSize: '11px',
+            fontFamily: chartFont,
+        }
+    },
+    navigator: {
+        height: 25,
+        margin: 0,
+        maskInside: false,
+        enabled: false,
+    },
+    xAxis: {
+        tickColor: xGridLineColor,
+        gridLineColor: xGridLineColor,
+        labels: {
+            style: {
+                color: axisLabelColor,
+                fontSize: '11px',
+            }
+        }
+    },
+    yAxis: {
+        gridLineColor: yGridLineColor,
+        labels: {
+            style: {
+                color: axisLabelColor,
+                fontSize: '11px',
+            },
+            y: 3,
+        }
+    }
+});
 
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
@@ -254,7 +346,13 @@ function updateEventData() {
     });
 }
 
-function renderChartWithItemId(itemId, containerId) {
+function renderChartWithItemId(itemId, containerId, forceRender = false) {
+    const containerElement = document.getElementById(containerId);
+
+    if (forceRender === false && containerElement.dataset.lastRendered) {
+        return;
+    }
+
     itemId = Number(itemId);
     let eventData = [];
 
@@ -353,21 +451,11 @@ function renderChartWithItemId(itemId, containerId) {
             ]);
         }
 
-        // TODO factor out common options
-        Highcharts.setOptions({
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
             chart: {
                 // zoom animations
                 animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
-                style: {
-                    fontFamily: chartFont,
-                },
-                spacingLeft: 0,
-                spacingRight: 5,
-                spacingTop: 7,
-                spacingBottom: 6,
-            },
-            lang: {
-                rangeSelectorZoom :""
             },
             plotOptions: {
                 series: {
@@ -378,45 +466,7 @@ function renderChartWithItemId(itemId, containerId) {
                         units: [['day', [1]], ['week', [1]]],
                         groupPixelWidth: 3,
                     },
-                    showInLegend: true,
                 },
-            },
-            xAxis: {
-                // lineColor: '#555',
-                tickColor: xGridLineColor,
-                // gridLineWidth: 1,
-                gridLineColor: xGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    }
-                }
-            },
-            yAxis: {
-                gridLineColor: yGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    },
-                    y: 3,
-                }
-            }
-        });
-
-        // Create the chart
-        let chart = new Highcharts.stockChart(containerId, {
-            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
-            scrollbar: {
-                height: 0,
-                buttonArrowColor: "#ffffff00",
-            },
-            title: {
-                enabled: false,
-            },
-            credits: {
-                enabled: false,
             },
             rangeSelector: {
                 buttons: [
@@ -441,41 +491,13 @@ function renderChartWithItemId(itemId, containerId) {
                         text: 'All'
                     },
                 ],
-                buttonPosition: {
-                    y: 5,
-                },
-                inputEnabled: false,
-                labelStyle: {
-                    color: axisLabelColor,
-                },
-                verticalAlign: 'top',
                 selected: 3,
-                x: -5.5,
             },
             legend: {
-                enabled: true,
-                align: 'right',
-                verticalAlign: 'top',
-                y: -23,
-                padding: 0,
-                itemStyle: {
-                    color: '#000000',
-                    fontSize: "13px",
-                },
+                enabled: true
             },
             tooltip: {
-                animation: false,
-                shared: true,
-                split: false,
-                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
                 xDateFormat: '%b %e, %Y',
-                backgroundColor: 'rgba(255, 255, 255, 1)',
-                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
-                style: {
-                    color: '#000000',
-                    fontSize: '11px',
-                    fontFamily: chartFont,
-                }
             },
             series: [
                 {
@@ -510,7 +532,6 @@ function renderChartWithItemId(itemId, containerId) {
                     name: 'Volume',
                     type: 'column',
                     data: dailyVolumes,
-                    showInLegend: false,
                     pointPadding: 0, // disable point and group padding to simulate column area chart
                     groupPadding: 0,
                     yAxis: 2,
@@ -631,13 +652,9 @@ function renderChartWithItemId(itemId, containerId) {
                 },
                 tickPixelInterval: 120,
             },
-            navigator: {
-                height: 25,
-                margin: 0,
-                maskInside: false,
-                enabled: false,
-            }
         });
+
+        containerElement.dataset.lastRendered = Date.now().toString();
     }
 
     $.getJSON(`https://${markethuntApiDomain}/items/${itemId}?plugin_ver=${GM_info.script.version}`, function (response) {
@@ -645,7 +662,13 @@ function renderChartWithItemId(itemId, containerId) {
     });
 }
 
-function renderStockChartWithItemId(itemId, containerId) {
+function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
+    const containerElement = document.getElementById(containerId);
+
+    if (forceRender === false && containerElement.dataset.lastRendered) {
+        return;
+    }
+
     itemId = Number(itemId);
     let eventData = [];
 
@@ -664,20 +687,11 @@ function renderStockChartWithItemId(itemId, containerId) {
             supply_data.push([x.timestamp, x.supply]);
         })
 
-        Highcharts.setOptions({
+        // Create the chart
+        let chart = new Highcharts.stockChart(containerId, {
             chart: {
                 // zoom animations
                 animation: SettingsController.getEnableChartAnimation() ? { 'duration': 500 } : false,
-                style: {
-                    fontFamily: chartFont,
-                },
-                spacingLeft: 0,
-                spacingRight: 5,
-                spacingTop: 7,
-                spacingBottom: 6,
-            },
-            lang: {
-                rangeSelectorZoom :""
             },
             plotOptions: {
                 series: {
@@ -685,51 +699,14 @@ function renderStockChartWithItemId(itemId, containerId) {
                     animation: SettingsController.getEnableChartAnimation() ? { 'duration': 900 } : false,
                     dataGrouping: {
                         enabled: true,
-                        units: [['hour', [1]], ['day', [1]], ['week', [1]]],
-                        groupPixelWidth: 3,
+                        units: [['hour', [2, 4, 6]], ['day', [1]], ['week', [1]]],
+                        groupPixelWidth: 2,
                         dateTimeLabelFormats: {
-                            hour: ['%b %e, %Y %H:%M UTC'],
-                            day: ['%A, %b %e, %Y'],
-                            week: ['Week from %A, %b %e, %Y'],
+                            hour: ['%b %e, %Y %H:%M UTC', '%b %e, %Y %H:%M UTC'],
+                            day: ['%b %e, %Y']
                         }
                     },
-                    showInLegend: true,
                 },
-            },
-            xAxis: {
-                tickColor: xGridLineColor,
-                gridLineColor: xGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    }
-                }
-            },
-            yAxis: {
-                gridLineColor: yGridLineColor,
-                labels: {
-                    style: {
-                        color: axisLabelColor,
-                        fontSize: '11px',
-                    },
-                    y: 3,
-                }
-            }
-        });
-
-        // Create the chart
-        let chart = new Highcharts.stockChart(containerId, {
-            // must keep scrollbar enabled for dynamic scrolling, so hide the scrollbar instead
-            scrollbar: {
-                height: 0,
-                buttonArrowColor: "#ffffff00",
-            },
-            title: {
-                enabled: false,
-            },
-            credits: {
-                enabled: false,
             },
             rangeSelector: {
                 buttons: [
@@ -743,12 +720,12 @@ function renderStockChartWithItemId(itemId, containerId) {
                         text: '1M'
                     }, {
                         type: 'month',
-                        count: 2,
-                        text: '2M'
-                    }, {
-                        type: 'month',
                         count: 3,
                         text: '3M'
+                    }, {
+                        type: 'month',
+                        count: 6,
+                        text: '6M'
                     }, {
                         type: 'year',
                         count: 1,
@@ -758,41 +735,13 @@ function renderStockChartWithItemId(itemId, containerId) {
                         text: 'All'
                     },
                 ],
-                buttonPosition: {
-                    y: 5,
-                },
-                inputEnabled: false,
-                labelStyle: {
-                    color: axisLabelColor,
-                },
-                verticalAlign: 'top',
-                selected: 1,
-                x: -5.5,
+                selected: 2,
             },
             legend: {
-                enabled: true,
-                align: 'right',
-                verticalAlign: 'top',
-                y: -23,
-                padding: 0,
-                itemStyle: {
-                    color: '#000000',
-                    fontSize: "13px",
-                },
+                enabled: true
             },
             tooltip: {
-                animation: false,
-                shared: true,
-                split: false,
-                headerFormat: '<span style="font-size: 11px; font-weight: bold">{point.key}</span><br/>',
                 xDateFormat: '%b %e, %Y %H:%M UTC',
-                backgroundColor: 'rgba(255, 255, 255, 1)',
-                hideDelay: 0, // makes tooltip feel more responsive when crossing gap between plots
-                style: {
-                    color: '#000000',
-                    fontSize: '11px',
-                    fontFamily: chartFont,
-                }
             },
             series: [
                 {
@@ -930,17 +879,13 @@ function renderStockChartWithItemId(itemId, containerId) {
                     year: '%Y'
                 },
                 tickPixelInterval: 120,
-            },
-            navigator: {
-                height: 25,
-                margin: 0,
-                maskInside: false,
-                enabled: false,
             }
         });
+
+        containerElement.dataset.lastRendered = Date.now().toString();
     }
 
-    $.getJSON(`https://${markethuntApiDomain}/items/${itemId}/stock?token=${localStorage.apiToken}&plugin_ver=${GM_info.script.version}`, function (response) {
+    $.getJSON(`https://${markethuntApiDomain}/items/${itemId}/stock?&plugin_ver=${GM_info.script.version}`, function (response) {
         renderStockChart(response);
     });
 }
@@ -997,19 +942,20 @@ const mpObserver = new MutationObserver(function () {
             // Setup chart divs
             const itemId = CurrentViewedItemId();
 
-            const stockDataCheckboxHtml = `
-            <div style="user-select: none; position: absolute; left: 1px; top: 15px;">
-                <label for="markethuntShowStockData"><input type="checkbox" id="markethuntShowStockData">Stock chart</label>
-            </div>`;
-
             targetContainer.insertAdjacentHTML(
                 "beforebegin",
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
-                    <div id="highchartContainer" style="flex-grow: 1">
-                        <img style="opacity: 0.07; margin: 105px 240px" src="${chartIconImageData}" alt="Chart icon">
+                    <div style="flex-grow: 1; position: relative">
+                        <div id="chartContainer" style="text-align: center; height: 100%; width: 100%">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                            <div style="color: grey">Loading ...</div>
+                        </div>
+                        <div id="stockChartContainer" style="text-align: center; position: absolute; background-color: white; top: 0; left: 0; width: 100%; height: 100%; display: none">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                            <div style="color: grey">Loading ...</div>
+                        </div>
                     </div>
                     <div id="markethuntInfobox" style="text-align: center; display: flex; flex-direction: column; padding: 34px 0 12px 5px; position: relative;">
-                        ${localStorage.apiToken ? stockDataCheckboxHtml : ''}
                         <div class="marketplaceView-item-averagePrice infobox-stat infobox-small-spans infobox-striped">
                             Trade volume:<br>
                             <span id="infoboxTradevol">--</span><br>
@@ -1020,11 +966,18 @@ const mpObserver = new MutationObserver(function () {
                             <span id="infobox7dTradevol">--</span><br>
                             <span id="infobox7dGoldvol" class="marketplaceView-goldValue">--</span>
                         </div>
+                        <div style="user-select: none; text-align: left">
+                            <label class="cl-switch" for="markethuntShowStockData" style="cursor: pointer">
+                                <input type="checkbox" id="markethuntShowStockData">
+                                <span class="switcher"></span>
+                                <span class="label">Stock chart</span>
+                            </label>
+                        </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
                             <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">Add to Watchlist</a>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/index.php?item_id=${itemId}" target="_blank">Markethunt</a>
-                            <a class="markethunt-settings-link" id="markethuntSettingsLink" href="#" >[Plugin Settings]</a>
+                            <a class="markethunt-cross-link" id="markethuntSettingsLink" href="#" >Plugin Settings</a>
+                            <div style="font-size: 0.8em; color: grey">v${GM_info.script.version}</div>
                         </div>
                     </div>
                 </div>`
@@ -1053,9 +1006,11 @@ const mpObserver = new MutationObserver(function () {
             const stockChartCheckbox = document.getElementById('markethuntShowStockData');
             stockChartCheckbox?.addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    renderStockChartWithItemId(itemId, 'highchartContainer');
+                    document.getElementById('stockChartContainer').style.display = 'block';
+                    renderStockChartWithItemId(itemId, 'stockChartContainer');
                 } else {
-                    renderChartWithItemId(itemId, 'highchartContainer');
+                    document.getElementById('stockChartContainer').style.display = 'none';
+                    renderChartWithItemId(itemId, 'chartContainer');
                 }
             });
 
@@ -1064,7 +1019,7 @@ const mpObserver = new MutationObserver(function () {
             settingsLink.addEventListener('click', openPluginSettings);
 
             // Render chart
-            renderChartWithItemId(itemId, "highchartContainer");
+            renderChartWithItemId(itemId, "chartContainer");
 
             // Re-observe after mutation-inducing logic
             mpObserver.observe(mpObserverTarget, {
@@ -1116,7 +1071,7 @@ mpObserver.observe(mpObserverTarget, {
     subtree: true
 });
 
-const mp_css_overrides = `
+const marketplaceCssOverrides = `
 .marketplaceView-item {
     padding-top: 10px;
 }
@@ -1185,6 +1140,82 @@ const mp_css_overrides = `
     height: 13px;
 }
 `;
+
+const materialSwitchCss = `
+.cl-switch input[type="checkbox"] {
+    display: none;
+    visibility: hidden;
+}
+
+.cl-switch .switcher {
+    display: inline-block;
+    border-radius: 100px;
+    width: 2.25em;
+    height: 1em;
+    background-color: #ccc;
+    position: relative;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.cl-switch .switcher:before {
+    content: "";
+    display: block;
+    width: 1.3em;
+    height: 1.3em;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    margin-top: -0.15em;
+    position: absolute;
+    top: 0;
+    left: 0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    margin-right: 0;
+    -webkit-transition: all 0.2s;
+    -moz-transition: all 0.2s;
+    -ms-transition: all 0.2s;
+    -o-transition: all 0.2s;
+    transition: all 0.2s;
+}
+
+.cl-switch .switcher:active:before {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 0 1em rgba(63, 81, 181, 0.3);
+    transition: all, 0.1s;
+}
+
+.cl-switch .label {
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.cl-switch input[type="checkbox"]:checked+.switcher {
+    background-color: #8591d5;
+}
+
+.cl-switch input[type="checkbox"]:checked+.switcher:before {
+    left: 100%;
+    margin-left: -1.3em;
+    background-color: #3f51b5;
+}
+
+.cl-switch [disabled]:not([disabled="false"])+.switcher {
+    background: #ccc !important;
+}
+
+.cl-switch [disabled]:not([disabled="false"])+.switcher:active:before {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+.cl-switch [disabled]:not([disabled="false"])+.switcher:before {
+    background-color: #e2e2e2 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2) !important;
+}`;
 
 /*******************************
  * 
@@ -1364,7 +1395,7 @@ journalObserver.observe(journalObserverTarget, {
     subtree: true
 });
 
-const journal_css_overrides = `
+const journalCssOverrides = `
 .journalactions a {
     display: inline-block;
 }
@@ -1461,8 +1492,9 @@ function onInvImportClick(){
 $(document).ready(function() {
     GM_addStyle(GM_getResourceText("jq_confirm_css"));
     GM_addStyle(GM_getResourceText("jq_toast_css"));
-    GM_addStyle(mp_css_overrides);
-    GM_addStyle(journal_css_overrides);
+    GM_addStyle(marketplaceCssOverrides);
+    GM_addStyle(journalCssOverrides);
+    GM_addStyle(materialSwitchCss);
 
     addTouchPoint();
 
