@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.6.0
+// @version      1.6.1
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -31,6 +31,10 @@ function sleep(ms) {
 
 const RoundToIntLocaleStringOpts = {
     maximumFractionDigits: 0
+}
+
+function isDarkMode() {
+    return !!getComputedStyle(document.documentElement).getPropertyValue('--mhdm-white');
 }
 
 /*******************************
@@ -735,7 +739,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                         text: 'All'
                     },
                 ],
-                selected: 2,
+                selected: 1,
             },
             legend: {
                 enabled: true
@@ -910,12 +914,30 @@ const chartIconImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAA
 
 // sb.png minified with TinyPNG then converted to base 64
 const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
-      "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
-      "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
-      "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
-      "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
-      "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
-      "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+    "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
+    "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
+    "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
+    "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
+    "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
+    "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+
+const settingsImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACKElEQVR4nO2YMUucQRCGH9Cgoi" +
+    "YgNolVqhAVm6SyNoGAyP0Q8TT+ABG0C3ZRbMU2gprC4vA/HNx5tQZTxSimCDHKJwsjHEe8b2bX1cV8DwzICTPvu+x+M7tQUFBwl3wFspzYI2G+Kwz8AjpJkCGF+Jt4Q4JMGQzMkiCLBgNfSIhhYAP4" +
+    "bTBwBWwCr+5D4AegDiyI2Bu6gU/ApUF4a1wCK0BPy4IsSE1XO4gnQKOlaA1YAg4ChLdGQ3LW/vG70+DN3B2K9I1ZX/EDwEkCBk6BQR8DawmIzyRWreLdQfqbgPCs6bCPWQxUAorVZN+OAL0SI3Ke6g" +
+    "F5K1rxJc8Cf4BpoKNNbve/GeDCs0ZJY+A1cOghfkK7QsA7DxOHok3FC6BqSO5W3krZkL8qmkw8A/aVe77dtrkNN1JrmuG+aPGiCziKOFl+zMl9JBqCOMsp0jwfWRlVNLFgrnKK9AXk7ld8/6MbcCJ8" +
+    "eXofBk5zirgmlewW6lIcYtdhfZmPeYi1n9F6wGe0Eeszam1kbjyIedeoWhqZzyhxIeOBlvcxR4mSMXGziXLOo1WnrHzUYS50nK5Lhx2VHtEnf88H3qMr/E8XGuQalyUSn/G81P9IQPxP30s9Mmk+tI" +
+    "EykR62NE1IG9+A5RgPW+2eFnvkWTDkaTEDtoHnsZ4WNbwE1o1G3IS7C4yTEFsGAzskyJzBgNsiyfHWYGCSBOkAzpUGmg9tUuwpxB8/tMiCgsfENevgYdmM/xZUAAAAAElFTkSuQmCC";
+
+const kofiImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAMAAABg3Am1AAABm1BMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8AAAD/Xluzs7PIyMj/XV7/Wmz/W2b/XW" +
+    "D//f3/WXH/Wm7/W2n/XGT8/Pz/+Pn/XGLQ0ND/W2q6urq3t7esrKympqb/V3j/WHX/+vr19fX/ydDCwsKwsLCioqKMjIx9fX1YWFhKSko7Ozv9/f3//Pz5+fn/9fXm5ub/2tzb29v/0dXNzc3Ex" +
+    "MT/pqf/mqX/kKX/n56enp6RkZH/kpD/joz/i4mIiIj/h4b/hIJubm5iYmJNTU0jIyMeHh4PDw8MDAz/4+TS0tL/xcj/u8jFxcW+vr7/rbT/lqz/k6D/jZ3/gZz/i5r/ipmYmJiXl5f/mJaVlZX/" +
+    "lJWUlJT/kJP/eYz/comCgoJ5eXl0dHRra2s0NDQsLCwnJycTExMRERH4jQN3AAAAKXRSTlMAiqaR9J+W+/h6dQ+5rI6Jg4BvZ1ZJNycH1svGwmM9MyshCe/ksqE/Gb0RW4gAAAH8SURBVEjH7dR" +
+    "nVxpBGIbhiVnpKki1JWrq+4KKi7pgaAqIIGrsGks09vTee//ZbmFndhTQ73p9fu4zs+fsLrlwnvhdl2posnnthNN5DU8h1PuNQSNuh2oY+7jzDy1WwtTjItSWGT/Ahm5D0AOnmfuDJhrU1Qgy28" +
+    "XirzEJYGYfvWcJelBRmgFIYOvxQJx/8XrlSRTE7Kuvb7JiOXD4PO1YmobJ3+ZOGiyo+5V0Oj0y8m32bWSgr+/OsqgFdYQE2jEP8B3dNBgGWVZeRyKRAWU9OBgOP6YBuYITACE08cGyYT00FOv/w" +
+    "gK78BdgGBv44KW2Dqvr/t7eLRZ0C3s0YA/93LgOBoP3jl0pgSY+eCjfJKatVbM0sLdiCqCAbj6ApZg81tbqAVrQ1uG8jrsSTO9ZuojmZjkY/aSuNfdHQbGAMvNOBmANb7B36SloxQbdP4iCSlor" +
+    "bK7OAUDu0OJnQQ400Q19fxc4k6lDs5voTPgM9GJd3W/xeym3i+ZmYgjioJv6oNw/yrbvN38U9xFbbnFfXAgocSm4zvawiDLB4QkQgyZMAiPOTwETQofHZyc8F+ahmnGkd2c68CdUIZXw6sngtnD" +
+    "wqOoBbaQCG/4vJOLxeKL8X0kmk6lUfvXd5wkU6AEcqwUra/GRyrqaL+salb+j0+myWm02b4BcOK+OAN6AtFxkFAmAAAAAAElFTkSuQmCC";
 
 const mpObserverTarget = document.querySelector("#overlayPopup");
 
@@ -975,8 +997,20 @@ const mpObserver = new MutationObserver(function () {
                         </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">Add to Watchlist</a>
-                            <a class="markethunt-cross-link" id="markethuntSettingsLink" href="#" >Plugin Settings</a>
+                            <div style="display: flex;">
+                                <div style="flex-grow: 1;"></div>
+                                <div>
+                                    <a id="markethuntSettingsLink" href="#">
+                                        <img src="${settingsImageData}" class="markethunt-settings-btn-img ${isDarkMode() ? 'inverted' : ''}">
+                                    </a>
+                                </div>
+                                <div>
+                                    <a href="https://ko-fi.com/vsong_program" target="_blank" alt="Donation Link">
+                                        <img src="${kofiImageData}" class="markethunt-settings-btn-img" alt="Settings">
+                                    </a>
+                                </div>
+                                <div style="flex-grow: 1;"></div>
+                            </div>
                             <div style="font-size: 0.8em; color: grey">v${GM_info.script.version}</div>
                         </div>
                     </div>
@@ -1106,10 +1140,18 @@ const marketplaceCssOverrides = `
     color: white;
     background-color: ${primaryLineColor};
 }
-.markethunt-settings-link {
-    color: #6a6a6a;
-    font-size: 10px;
-    margin-top: 3px;
+.markethunt-settings-btn-img {
+    height: 26px;
+    padding: 3px;
+    margin: 0 5px 0 5px;
+    border-radius: 999px;
+    box-shadow: 0px 0px 1px gray;
+}
+.markethunt-settings-btn-img:hover {
+    box-shadow: 0px 0px 3px gray;
+}
+.inverted {
+    filter: invert(1);
 }
 .markethunt-settings-row-input {
     display: flex;
