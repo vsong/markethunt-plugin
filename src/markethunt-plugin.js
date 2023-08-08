@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.6.1
+// @version      1.7.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -33,9 +33,17 @@ const RoundToIntLocaleStringOpts = {
     maximumFractionDigits: 0
 }
 
-function isDarkMode() {
-    return !!getComputedStyle(document.documentElement).getPropertyValue('--mhdm-white');
-}
+const isDarkMode = (() => {
+    let isDark = null;
+
+    return () => {
+        if (isDark == null) {
+            isDark = !!getComputedStyle(document.documentElement).getPropertyValue('--mhdm-white');
+        }
+
+        return isDark;
+    }
+})();
 
 /*******************************
  * 
@@ -215,6 +223,15 @@ const yGridLineColorLighter = "#dddddd";
 const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
+// dark mode style overrides
+const darkMode = {
+    backgroundColor: "#222222",
+    eventBandColor: "#303030",
+    eventBandFontColor: "#909090",
+    primaryLineColor: "#9e8dfc",
+    crosshairColor: "#e0e0e0"
+}
+
 const chartFont = "tahoma,arial,sans-serif";
 
 // set global opts
@@ -309,6 +326,83 @@ Highcharts.setOptions({
     }
 });
 
+function setDarkThemeGlobalOpts() {
+    Highcharts.setOptions({
+        chart: {
+            backgroundColor: darkMode.backgroundColor
+        },
+        legend: {
+            itemStyle: {
+                color: '#e0e0e0'
+            },
+            itemHoverStyle: {
+                color: '#f0f0f0'
+            },
+            itemHiddenStyle: {
+                color: '#777777'
+            },
+            title: {
+                style: {
+                    color: '#c0c0c0'
+                }
+            }
+        },
+        xAxis: {
+            gridLineColor: '#707070',
+            labels: {
+                style: {
+                    color: '#e0e0e0'
+                }
+            },
+            lineColor: '#707070',
+            minorGridLineColor: '#505050',
+            tickColor: '#707070',
+        },
+        yAxis: {
+            gridLineColor: '#707070',
+            labels: {
+                style: {
+                    color: '#e0e0e0'
+                }
+            },
+            lineColor: '#707070',
+            minorGridLineColor: '#505050',
+            tickColor: '#707070',
+        },
+        tooltip: {
+            backgroundColor: '#000000',
+            style: {
+                color: '#f0f0f0'
+            }
+        },
+        rangeSelector: {
+            buttonTheme: {
+                fill: '#444444',
+                stroke: '#000000',
+                style: {
+                    color: '#cccccc'
+                },
+                states: {
+                    hover: {
+                        fill: '#707070',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    },
+                    select: {
+                        fill: '#000000',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    }
+                }
+            },
+        },
+    });
+}
+
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
 }
@@ -327,7 +421,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
     return {
         from: UtcIsoDateToMillis(IsoStrFrom),
         to: UtcIsoDateToMillis(IsoStrTo),
-        color: eventBandColor,
+        color: isDarkMode() ? darkMode.eventBandColor : eventBandColor,
         label: {
             text: labelText,
             rotation: 270,
@@ -335,7 +429,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
             y: 5, // pixels from top of chart
             x: 4, // fix slight centering issue
             style: {
-                color: eventBandFontColor,
+                color: isDarkMode() ? darkMode.eventBandFontColor : eventBandFontColor,
                 fontSize: '12px',
                 fontFamily: chartFont,
             },
@@ -455,6 +549,10 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
             ]);
         }
 
+        if (isDarkMode()) {
+            setDarkThemeGlobalOpts();
+        }
+
         // Create the chart
         let chart = new Highcharts.stockChart(containerId, {
             chart: {
@@ -516,7 +614,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                         }
                     },
                     yAxis: 0,
-                    color: primaryLineColor,
+                    color: isDarkMode() ? darkMode.primaryLineColor : primaryLineColor,
                     marker: {
                         states: {
                             hover: {
@@ -603,7 +701,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                     showLastLabel: true, // show label at top of chart
                     crosshair: {
                         dashStyle: 'ShortDot',
-                        color: crosshairColor,
+                        color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                     },
                     opposite: false,
                     alignTicks: false, // disabled, otherwise autoranger will create too large a Y-window
@@ -646,7 +744,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                 plotBands: eventData,
                 crosshair: {
                     dashStyle: 'ShortDot',
-                    color: crosshairColor,
+                    color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                 },
                 dateTimeLabelFormats:{
                     day: '%b %e',
@@ -690,6 +788,10 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
             ask_data.push([x.timestamp, x.ask]);
             supply_data.push([x.timestamp, x.supply]);
         })
+
+        if (isDarkMode()) {
+            setDarkThemeGlobalOpts();
+        }
 
         // Create the chart
         let chart = new Highcharts.stockChart(containerId, {
@@ -760,7 +862,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                         }
                     },
                     yAxis: 0,
-                    color: primaryLineColor,
+                    color: isDarkMode() ? darkMode.primaryLineColor : primaryLineColor,
                     marker: {
                         states: {
                             hover: {
@@ -874,7 +976,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                 plotBands: eventData,
                 crosshair: {
                     dashStyle: 'ShortDot',
-                    color: crosshairColor,
+                    color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                 },
                 dateTimeLabelFormats:{
                     day: '%b %e',
@@ -969,11 +1071,11 @@ const mpObserver = new MutationObserver(function () {
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
                     <div style="flex-grow: 1; position: relative">
                         <div id="chartContainer" style="text-align: center; height: 100%; width: 100%">
-                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon" class="${isDarkMode() ? 'inverted' : ''}">
                             <div style="color: grey">Loading ...</div>
                         </div>
-                        <div id="stockChartContainer" style="text-align: center; position: absolute; background-color: white; top: 0; left: 0; width: 100%; height: 100%; display: none">
-                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                        <div id="stockChartContainer" style="text-align: center; position: absolute; background-color: ${isDarkMode() ? darkMode.backgroundColor : 'white'}; top: 0; left: 0; width: 100%; height: 100%; display: none">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon" class="${isDarkMode() ? 'inverted' : ''}">
                             <div style="color: grey">Loading ...</div>
                         </div>
                     </div>
@@ -1145,10 +1247,10 @@ const marketplaceCssOverrides = `
     padding: 3px;
     margin: 0 5px 0 5px;
     border-radius: 999px;
-    box-shadow: 0px 0px 1px gray;
+    box-shadow: 0px 0px 3px gray;
 }
 .markethunt-settings-btn-img:hover {
-    box-shadow: 0px 0px 3px gray;
+    box-shadow: 0px 0px 3px 1px gray;
 }
 .inverted {
     filter: invert(1);
