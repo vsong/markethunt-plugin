@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.6.0
+// @version      1.7.0
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -32,6 +32,18 @@ function sleep(ms) {
 const RoundToIntLocaleStringOpts = {
     maximumFractionDigits: 0
 }
+
+const isDarkMode = (() => {
+    let isDark = null;
+
+    return () => {
+        if (isDark == null) {
+            isDark = !!getComputedStyle(document.documentElement).getPropertyValue('--mhdm-white');
+        }
+
+        return isDark;
+    }
+})();
 
 /*******************************
  * 
@@ -211,6 +223,15 @@ const yGridLineColorLighter = "#dddddd";
 const axisLabelColor = "#444444";
 const crosshairColor = "#252525";
 
+// dark mode style overrides
+const darkMode = {
+    backgroundColor: "#222222",
+    eventBandColor: "#303030",
+    eventBandFontColor: "#909090",
+    primaryLineColor: "#9e8dfc",
+    crosshairColor: "#e0e0e0"
+}
+
 const chartFont = "tahoma,arial,sans-serif";
 
 // set global opts
@@ -305,6 +326,83 @@ Highcharts.setOptions({
     }
 });
 
+function setDarkThemeGlobalOpts() {
+    Highcharts.setOptions({
+        chart: {
+            backgroundColor: darkMode.backgroundColor
+        },
+        legend: {
+            itemStyle: {
+                color: '#e0e0e0'
+            },
+            itemHoverStyle: {
+                color: '#f0f0f0'
+            },
+            itemHiddenStyle: {
+                color: '#777777'
+            },
+            title: {
+                style: {
+                    color: '#c0c0c0'
+                }
+            }
+        },
+        xAxis: {
+            gridLineColor: '#707070',
+            labels: {
+                style: {
+                    color: '#e0e0e0'
+                }
+            },
+            lineColor: '#707070',
+            minorGridLineColor: '#505050',
+            tickColor: '#707070',
+        },
+        yAxis: {
+            gridLineColor: '#707070',
+            labels: {
+                style: {
+                    color: '#e0e0e0'
+                }
+            },
+            lineColor: '#707070',
+            minorGridLineColor: '#505050',
+            tickColor: '#707070',
+        },
+        tooltip: {
+            backgroundColor: '#000000',
+            style: {
+                color: '#f0f0f0'
+            }
+        },
+        rangeSelector: {
+            buttonTheme: {
+                fill: '#444444',
+                stroke: '#000000',
+                style: {
+                    color: '#cccccc'
+                },
+                states: {
+                    hover: {
+                        fill: '#707070',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    },
+                    select: {
+                        fill: '#000000',
+                        stroke: '#000000',
+                        style: {
+                            color: 'white'
+                        }
+                    }
+                }
+            },
+        },
+    });
+}
+
 function UtcIsoDateToMillis(dateStr) {
     return (new Date(dateStr + UtcTimezone)).getTime();
 }
@@ -323,7 +421,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
     return {
         from: UtcIsoDateToMillis(IsoStrFrom),
         to: UtcIsoDateToMillis(IsoStrTo),
-        color: eventBandColor,
+        color: isDarkMode() ? darkMode.eventBandColor : eventBandColor,
         label: {
             text: labelText,
             rotation: 270,
@@ -331,7 +429,7 @@ function eventBand(IsoStrFrom, IsoStrTo, labelText) {
             y: 5, // pixels from top of chart
             x: 4, // fix slight centering issue
             style: {
-                color: eventBandFontColor,
+                color: isDarkMode() ? darkMode.eventBandFontColor : eventBandFontColor,
                 fontSize: '12px',
                 fontFamily: chartFont,
             },
@@ -451,6 +549,10 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
             ]);
         }
 
+        if (isDarkMode()) {
+            setDarkThemeGlobalOpts();
+        }
+
         // Create the chart
         let chart = new Highcharts.stockChart(containerId, {
             chart: {
@@ -512,7 +614,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                         }
                     },
                     yAxis: 0,
-                    color: primaryLineColor,
+                    color: isDarkMode() ? darkMode.primaryLineColor : primaryLineColor,
                     marker: {
                         states: {
                             hover: {
@@ -599,7 +701,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                     showLastLabel: true, // show label at top of chart
                     crosshair: {
                         dashStyle: 'ShortDot',
-                        color: crosshairColor,
+                        color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                     },
                     opposite: false,
                     alignTicks: false, // disabled, otherwise autoranger will create too large a Y-window
@@ -642,7 +744,7 @@ function renderChartWithItemId(itemId, containerId, forceRender = false) {
                 plotBands: eventData,
                 crosshair: {
                     dashStyle: 'ShortDot',
-                    color: crosshairColor,
+                    color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                 },
                 dateTimeLabelFormats:{
                     day: '%b %e',
@@ -686,6 +788,10 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
             ask_data.push([x.timestamp, x.ask]);
             supply_data.push([x.timestamp, x.supply]);
         })
+
+        if (isDarkMode()) {
+            setDarkThemeGlobalOpts();
+        }
 
         // Create the chart
         let chart = new Highcharts.stockChart(containerId, {
@@ -735,7 +841,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                         text: 'All'
                     },
                 ],
-                selected: 2,
+                selected: 1,
             },
             legend: {
                 enabled: true
@@ -756,7 +862,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                         }
                     },
                     yAxis: 0,
-                    color: primaryLineColor,
+                    color: isDarkMode() ? darkMode.primaryLineColor : primaryLineColor,
                     marker: {
                         states: {
                             hover: {
@@ -870,7 +976,7 @@ function renderStockChartWithItemId(itemId, containerId, forceRender = false) {
                 plotBands: eventData,
                 crosshair: {
                     dashStyle: 'ShortDot',
-                    color: crosshairColor,
+                    color: isDarkMode() ? darkMode.crosshairColor : crosshairColor,
                 },
                 dateTimeLabelFormats:{
                     day: '%b %e',
@@ -910,12 +1016,30 @@ const chartIconImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAA
 
 // sb.png minified with TinyPNG then converted to base 64
 const sbImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABEAAAARCAMAAAAMs7fIAAABcVBMVEX+/v/5///+/fzwyJTuxJD1////6cn416z31ab206SOi4ny///t///b" +
-      "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
-      "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
-      "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
-      "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
-      "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
-      "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+    "///J///2/P/9/Pj4+Pjq6/b8+PPw8PPh4+7+9+3K5s//7M7/6Mb+5cP63bfv17b53LP21an1zJzWuprzzJDRrovpuoHmuXzktXu6k3Rd0HOzi2vp///Q//+z//+t///n/v/0+P/q7v/t7v79" +
+    "+PjW//P/+/P2+vHZ7PHn6e3/+eft5+f/9ubi8eT/9OPw59//8t377dzh3tz+7dXN7dTa09Sv1tP35tHO1czX4cu+3cLazcLCysL44L3Uw7vDuLj32rar3LGvtbHq167gyK6S16nlyanl06je" +
+    "w6jy06fxz6Z8oqSooKDszJ7Ls56MypvoxZqel5fQsZblwJWVkJB0xY3nvI10y4vswIv30IrvwInRp4jxyYeIg4XdtYPQq4LNpH65mnt9e3u+sXr0xHjZq3dZwHTPonR1dXHgqnC6kGtpbGnh" +
+    "qWEs0UvWjFe8AAAA4klEQVQY02PACvgYITSvlbo4mCEY4V9awZUf4+ieUqUOFmFK5OKKjMtKCioW9zPRBAowAhFIJUSnFhBrczMwAJGIkKiomQhIkFWHj0GXQc+An4df3yfPlRUoxMNgaGFv" +
+    "6uTpHF1SpqIA0StWWaCqzBwlL8+RngFxhnlhSJiblxSbhCRzEViE1ShNWlaGnZMzIFU1HqLLWFGOnZOZmYWFRcUD6g1FFg52DrnY3HINIahIpnJ2jpqGmlJCsjdUJFBJIViGTZJNOjwUKiLr" +
+    "KyXhYGtpbediAxURExYWYGIAQgGgDwEEwCDFO/6WiQAAAABJRU5ErkJggg==";
+
+const settingsImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACKElEQVR4nO2YMUucQRCGH9Cgoi" +
+    "YgNolVqhAVm6SyNoGAyP0Q8TT+ABG0C3ZRbMU2gprC4vA/HNx5tQZTxSimCDHKJwsjHEe8b2bX1cV8DwzICTPvu+x+M7tQUFBwl3wFspzYI2G+Kwz8AjpJkCGF+Jt4Q4JMGQzMkiCLBgNfSIhhYAP4" +
+    "bTBwBWwCr+5D4AegDiyI2Bu6gU/ApUF4a1wCK0BPy4IsSE1XO4gnQKOlaA1YAg4ChLdGQ3LW/vG70+DN3B2K9I1ZX/EDwEkCBk6BQR8DawmIzyRWreLdQfqbgPCs6bCPWQxUAorVZN+OAL0SI3Ke6g" +
+    "F5K1rxJc8Cf4BpoKNNbve/GeDCs0ZJY+A1cOghfkK7QsA7DxOHok3FC6BqSO5W3krZkL8qmkw8A/aVe77dtrkNN1JrmuG+aPGiCziKOFl+zMl9JBqCOMsp0jwfWRlVNLFgrnKK9AXk7ld8/6MbcCJ8" +
+    "eXofBk5zirgmlewW6lIcYtdhfZmPeYi1n9F6wGe0Eeszam1kbjyIedeoWhqZzyhxIeOBlvcxR4mSMXGziXLOo1WnrHzUYS50nK5Lhx2VHtEnf88H3qMr/E8XGuQalyUSn/G81P9IQPxP30s9Mmk+tI" +
+    "EykR62NE1IG9+A5RgPW+2eFnvkWTDkaTEDtoHnsZ4WNbwE1o1G3IS7C4yTEFsGAzskyJzBgNsiyfHWYGCSBOkAzpUGmg9tUuwpxB8/tMiCgsfENevgYdmM/xZUAAAAAElFTkSuQmCC";
+
+const kofiImageData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAMAAABg3Am1AAABm1BMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8AAAD/Xluzs7PIyMj/XV7/Wmz/W2b/XW" +
+    "D//f3/WXH/Wm7/W2n/XGT8/Pz/+Pn/XGLQ0ND/W2q6urq3t7esrKympqb/V3j/WHX/+vr19fX/ydDCwsKwsLCioqKMjIx9fX1YWFhKSko7Ozv9/f3//Pz5+fn/9fXm5ub/2tzb29v/0dXNzc3Ex" +
+    "MT/pqf/mqX/kKX/n56enp6RkZH/kpD/joz/i4mIiIj/h4b/hIJubm5iYmJNTU0jIyMeHh4PDw8MDAz/4+TS0tL/xcj/u8jFxcW+vr7/rbT/lqz/k6D/jZ3/gZz/i5r/ipmYmJiXl5f/mJaVlZX/" +
+    "lJWUlJT/kJP/eYz/comCgoJ5eXl0dHRra2s0NDQsLCwnJycTExMRERH4jQN3AAAAKXRSTlMAiqaR9J+W+/h6dQ+5rI6Jg4BvZ1ZJNycH1svGwmM9MyshCe/ksqE/Gb0RW4gAAAH8SURBVEjH7dR" +
+    "nVxpBGIbhiVnpKki1JWrq+4KKi7pgaAqIIGrsGks09vTee//ZbmFndhTQ73p9fu4zs+fsLrlwnvhdl2posnnthNN5DU8h1PuNQSNuh2oY+7jzDy1WwtTjItSWGT/Ahm5D0AOnmfuDJhrU1Qgy28" +
+    "XirzEJYGYfvWcJelBRmgFIYOvxQJx/8XrlSRTE7Kuvb7JiOXD4PO1YmobJ3+ZOGiyo+5V0Oj0y8m32bWSgr+/OsqgFdYQE2jEP8B3dNBgGWVZeRyKRAWU9OBgOP6YBuYITACE08cGyYT00FOv/w" +
+    "gK78BdgGBv44KW2Dqvr/t7eLRZ0C3s0YA/93LgOBoP3jl0pgSY+eCjfJKatVbM0sLdiCqCAbj6ApZg81tbqAVrQ1uG8jrsSTO9ZuojmZjkY/aSuNfdHQbGAMvNOBmANb7B36SloxQbdP4iCSlor" +
+    "bK7OAUDu0OJnQQ400Q19fxc4k6lDs5voTPgM9GJd3W/xeym3i+ZmYgjioJv6oNw/yrbvN38U9xFbbnFfXAgocSm4zvawiDLB4QkQgyZMAiPOTwETQofHZyc8F+ahmnGkd2c68CdUIZXw6sngtnD" +
+    "wqOoBbaQCG/4vJOLxeKL8X0kmk6lUfvXd5wkU6AEcqwUra/GRyrqaL+salb+j0+myWm02b4BcOK+OAN6AtFxkFAmAAAAAAElFTkSuQmCC";
 
 const mpObserverTarget = document.querySelector("#overlayPopup");
 
@@ -947,11 +1071,11 @@ const mpObserver = new MutationObserver(function () {
                 `<div id="chartArea" style="display: flex; padding: 0 20px 0 20px; height: 315px;">
                     <div style="flex-grow: 1; position: relative">
                         <div id="chartContainer" style="text-align: center; height: 100%; width: 100%">
-                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon" class="${isDarkMode() ? 'inverted' : ''}">
                             <div style="color: grey">Loading ...</div>
                         </div>
-                        <div id="stockChartContainer" style="text-align: center; position: absolute; background-color: white; top: 0; left: 0; width: 100%; height: 100%; display: none">
-                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon">
+                        <div id="stockChartContainer" style="text-align: center; position: absolute; background-color: ${isDarkMode() ? darkMode.backgroundColor : 'white'}; top: 0; left: 0; width: 100%; height: 100%; display: none">
+                            <img style="opacity: 0.07; margin-top: 105px" src="${chartIconImageData}" alt="Chart icon" class="${isDarkMode() ? 'inverted' : ''}">
                             <div style="color: grey">Loading ...</div>
                         </div>
                     </div>
@@ -975,8 +1099,20 @@ const mpObserver = new MutationObserver(function () {
                         </div>
                         <div style="flex-grow: 1"></div> <!-- spacer div -->
                         <div>
-                            <a class="markethunt-cross-link" href="https://${markethuntDomain}/watchlist.php?action=add_watch_item&item_id=${itemId}" target="_blank">Add to Watchlist</a>
-                            <a class="markethunt-cross-link" id="markethuntSettingsLink" href="#" >Plugin Settings</a>
+                            <div style="display: flex;">
+                                <div style="flex-grow: 1;"></div>
+                                <div>
+                                    <a id="markethuntSettingsLink" href="#">
+                                        <img src="${settingsImageData}" class="markethunt-settings-btn-img ${isDarkMode() ? 'inverted' : ''}">
+                                    </a>
+                                </div>
+                                <div>
+                                    <a href="https://ko-fi.com/vsong_program" target="_blank" alt="Donation Link">
+                                        <img src="${kofiImageData}" class="markethunt-settings-btn-img" alt="Settings">
+                                    </a>
+                                </div>
+                                <div style="flex-grow: 1;"></div>
+                            </div>
                             <div style="font-size: 0.8em; color: grey">v${GM_info.script.version}</div>
                         </div>
                     </div>
@@ -1106,10 +1242,18 @@ const marketplaceCssOverrides = `
     color: white;
     background-color: ${primaryLineColor};
 }
-.markethunt-settings-link {
-    color: #6a6a6a;
-    font-size: 10px;
-    margin-top: 3px;
+.markethunt-settings-btn-img {
+    height: 26px;
+    padding: 3px;
+    margin: 0 5px 0 5px;
+    border-radius: 999px;
+    box-shadow: 0px 0px 3px gray;
+}
+.markethunt-settings-btn-img:hover {
+    box-shadow: 0px 0px 3px 1px gray;
+}
+.inverted {
+    filter: invert(1);
 }
 .markethunt-settings-row-input {
     display: flex;
