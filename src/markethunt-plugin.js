@@ -3,7 +3,7 @@
 // @author       Program
 // @namespace    https://greasyfork.org/en/users/886222-program
 // @license      MIT
-// @version      1.7.0
+// @version      1.7.1
 // @description  Adds a price chart and Markethunt integration to the MH marketplace screen.
 // @resource     jq_confirm_css https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css
 // @resource     jq_toast_css https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css
@@ -15,6 +15,8 @@
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 //
+// @downloadURL https://update.greasyfork.org/scripts/441382/Markethunt%20plugin%20for%20Mousehunt.user.js
+// @updateURL https://update.greasyfork.org/scripts/441382/Markethunt%20plugin%20for%20Mousehunt.meta.js
 // ==/UserScript==
 
 const markethuntDomain = 'markethunt.win';
@@ -1373,8 +1375,32 @@ const addPfolioBtnImgData = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAA
 
 function addJournalButtons(supplyTransferJournalEntries) {
     supplyTransferJournalEntries.forEach(function(supplyTransferEntry) {
-        const journalActionsElem = supplyTransferEntry.querySelector(".journalactions");
+        let journalActionsElem = supplyTransferEntry.querySelector(".journalactions");
         const textElem = supplyTransferEntry.querySelector(".journaltext");
+
+        // If journalactions doesn't exist, create our own container
+        if (!journalActionsElem) {
+            // Create new actions container
+            journalActionsElem = document.createElement("div");
+            journalActionsElem.className = "journalactions";
+
+            // Style it to appear in top-right corner like the old share buttons
+            journalActionsElem.style.cssText = `
+                    position: absolute;
+                    top: 5px;
+                    right: 5px;
+                    z-index: 10;
+                `;
+
+            // Make sure the parent has relative positioning
+            if (getComputedStyle(supplyTransferEntry).position === 'static') {
+                supplyTransferEntry.style.position = 'relative';
+            }
+
+            // Insert at the beginning of the journal entry
+            supplyTransferEntry.prepend(journalActionsElem);
+        }
+
 
         if (journalActionsElem.querySelector("a.actionportfolio")) {
             return;
@@ -1391,7 +1417,7 @@ function addJournalButtons(supplyTransferJournalEntries) {
         addPortfolioBtn.href = "#";
         addPortfolioBtn.className = "actionportfolio";
         addPortfolioBtn.addEventListener('click', addSbTradeToPortfolio);
-        journalActionsElem.prepend(addPortfolioBtn)
+        journalActionsElem.prepend(addPortfolioBtn);
     });
 }
 
@@ -1425,7 +1451,7 @@ function normalizeItemName(name) {
 async function addSbTradeToPortfolio(event) {
     event.preventDefault(); // prevent scroll to top
 
-    const targetTransferJournalEntry = event.target.parentNode.parentNode.parentNode;
+    const targetTransferJournalEntry = event.target.closest(".entry.supplytransferitem");
     const textElem = targetTransferJournalEntry.querySelector(".journaltext");
     const targetEntryId = Number(targetTransferJournalEntry.dataset.entryId);
     // group 1 = qty, group 2 = item name, group 3 = trade partner snuid
