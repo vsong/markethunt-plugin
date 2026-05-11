@@ -14,9 +14,6 @@
 // @include      https://www.mousehuntgame.com/*
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
-//
-// @downloadURL https://update.greasyfork.org/scripts/441382/Markethunt%20plugin%20for%20Mousehunt.user.js
-// @updateURL https://update.greasyfork.org/scripts/441382/Markethunt%20plugin%20for%20Mousehunt.meta.js
 // ==/UserScript==
 
 const markethuntDomain = 'markethunt.win';
