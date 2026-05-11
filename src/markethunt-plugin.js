@@ -14,6 +14,7 @@
 // @include      https://www.mousehuntgame.com/*
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
+
 // ==/UserScript==
 
 const markethuntDomain = 'markethunt.win';
